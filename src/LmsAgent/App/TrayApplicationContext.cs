@@ -48,7 +48,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _api = new WorkSupportApiClient(_settings.ServerUrl, _settings.ApiBaseUrlOverride);
 
         _dutyService = new DutyNotificationService(_api, _settings);
-        _scheduleOverlayService = new ScheduleOverlayService(_api, _settings);
+        _scheduleOverlayService = new ScheduleOverlayService(_api, _session, _settings);
         _autoPrintService = new AutoPrintService(_api, _session, _settings);
 
         _session.SessionChanged += OnSessionChanged;
@@ -70,6 +70,14 @@ public sealed class TrayApplicationContext : ApplicationContext
         userMenu.DropDownItems.Add(_loginItem);
         userMenu.DropDownItems.Add(_userInfoItem);
         menu.Items.Add(userMenu);
+
+        var basicInfoMenu = new ToolStripMenuItem("기본정보");
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("요청사항", null, OnRequestsClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("학교기본정보", null, OnSchoolInfoClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("공통계정", null, OnSharedAccountsClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("협의사항", null, OnMeetingsClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("길라잡이 조회", null, OnGuideDocsClicked));
+        menu.Items.Add(basicInfoMenu);
 
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("환경설정...", null, OnOptionsClicked));
@@ -182,6 +190,12 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         SettingsStore.Save(_settings);
         _scheduleOverlayService.ApplySettings();
+
+        if (_settings.ShowStartupNoticeModal)
+        {
+            using var summary = new StartupSummaryForm(_api);
+            summary.ShowDialog();
+        }
     }
 
     private void OnUserInfoClicked(object? sender, EventArgs e)
@@ -217,6 +231,52 @@ public sealed class TrayApplicationContext : ApplicationContext
         }
 
         using var form = new ScheduleListForm(_api, _session);
+        form.ShowDialog();
+    }
+
+    private bool RequireLoginForBasicInfo()
+    {
+        if (_session.IsLoggedIn)
+        {
+            return true;
+        }
+
+        MessageBox.Show("먼저 로그인해주세요.", "기본정보", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        return false;
+    }
+
+    private void OnRequestsClicked(object? sender, EventArgs e)
+    {
+        if (!RequireLoginForBasicInfo()) return;
+        using var form = new RequestsForm(_api);
+        form.ShowDialog();
+    }
+
+    private void OnSchoolInfoClicked(object? sender, EventArgs e)
+    {
+        if (!RequireLoginForBasicInfo()) return;
+        using var form = new SchoolInfoForm(_api);
+        form.ShowDialog();
+    }
+
+    private void OnSharedAccountsClicked(object? sender, EventArgs e)
+    {
+        if (!RequireLoginForBasicInfo()) return;
+        using var form = new SharedAccountsForm(_api);
+        form.ShowDialog();
+    }
+
+    private void OnMeetingsClicked(object? sender, EventArgs e)
+    {
+        if (!RequireLoginForBasicInfo()) return;
+        using var form = new MeetingsForm(_api);
+        form.ShowDialog();
+    }
+
+    private void OnGuideDocsClicked(object? sender, EventArgs e)
+    {
+        if (!RequireLoginForBasicInfo()) return;
+        using var form = new GuideDocsForm(_api);
         form.ShowDialog();
     }
 

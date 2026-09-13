@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using LmsAgent.Interop;
@@ -53,5 +54,11 @@ public sealed class DutyBannerForm : Form
     {
         var area = screen.WorkingArea;
         Location = new Point(area.Right - Width - 16, area.Top + 16);
+    }
+
+    /// <summary>환경설정 &gt; 복무의 투명도(0~100%)를 적용합니다.</summary>
+    public void SetOpacityPercent(int percent)
+    {
+        Opacity = Math.Clamp(percent, 5, 100) / 100.0;
     }
 }

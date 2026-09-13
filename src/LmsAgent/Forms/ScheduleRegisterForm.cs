@@ -10,6 +10,8 @@ namespace LmsAgent.Forms;
 
 /// <summary>
 /// 학사 일정 &gt; 일정 등록(및 목록에서의 수정) 창입니다.
+/// 구글 캘린더의 일정 입력 방식을 따라, "종일" 체크 시 날짜만 입력하고
+/// 체크를 해제하면 날짜와 별도로 시작/종료 시간을 입력할 수 있습니다.
 ///
 /// 권한 규칙:
 ///  - 등록은 누구나 가능하지만, 담당업무는 자신이 맡은 업무 중에서만 고를 수 있고
@@ -23,63 +25,68 @@ public sealed class ScheduleRegisterForm : Form
     private readonly SessionManager _session;
     private readonly SchoolEvent? _editing;
 
+    private bool _suppressAutoAdjust;
+
     private readonly TextBox _titleBox = new() { Left = 120, Top = 20, Width = 260 };
+
+    private readonly CheckBox _allDayBox = new() { Left = 120, Top = 55, Width = 200, Text = "종일" };
+
+    private readonly DateTimePicker _startDatePicker = new()
+    {
+        Left = 120, Top = 88, Width = 130, Format = DateTimePickerFormat.Short,
+    };
+
+    private readonly DateTimePicker _startTimePicker = new()
+    {
+        Left = 260, Top = 88, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
+    };
+
+    private readonly DateTimePicker _endDatePicker = new()
+    {
+        Left = 120, Top = 120, Width = 130, Format = DateTimePickerFormat.Short,
+    };
+
+    private readonly DateTimePicker _endTimePicker = new()
+    {
+        Left = 260, Top = 120, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
+    };
 
     private readonly ComboBox _deptBox = new()
     {
         Left = 120,
-        Top = 55,
+        Top = 153,
         Width = 260,
         DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
-    private readonly DateTimePicker _startPicker = new()
-    {
-        Left = 120,
-        Top = 90,
-        Width = 260,
-        Format = DateTimePickerFormat.Custom,
-        CustomFormat = "yyyy-MM-dd (ddd) HH:mm",
-        ShowUpDown = false,
-    };
-
-    private readonly DateTimePicker _endPicker = new()
-    {
-        Left = 120,
-        Top = 122,
-        Width = 260,
-        Format = DateTimePickerFormat.Custom,
-        CustomFormat = "yyyy-MM-dd (ddd) HH:mm",
-        ShowUpDown = false,
-    };
-
-    private readonly CheckBox _allDayBox = new() { Left = 120, Top = 154, Width = 150, Text = "종일 일정" };
-    private readonly TextBox _locationBox = new() { Left = 120, Top = 184, Width = 260 };
+    private readonly TextBox _locationBox = new() { Left = 120, Top = 188, Width = 260 };
 
     private readonly TextBox _noteBox = new()
     {
         Left = 20,
-        Top = 218,
+        Top = 222,
         Width = 360,
         Height = 80,
         Multiline = true,
         ScrollBars = ScrollBars.Vertical,
     };
 
-    private readonly Button _saveButton = new() { Left = 210, Top = 308, Width = 80 };
-    private readonly Button _cancelButton = new() { Left = 300, Top = 308, Width = 80, Text = "취소" };
+    private readonly Button _saveButton = new() { Left = 210, Top = 312, Width = 80 };
+    private readonly Button _cancelButton = new() { Left = 300, Top = 312, Width = 80, Text = "취소" };
 
     private readonly Label _statusLabel = new()
     {
         Left = 20,
-        Top = 342,
+        Top = 346,
         Width = 360,
         Height = 30,
         ForeColor = Color.Firebrick,
     };
 
     /// <param name="editing">null이면 신규 등록, 값이 있으면 해당 일정을 수정합니다.</param>
-    public ScheduleRegisterForm(WorkSupportApiClient api, SessionManager session, SchoolEvent? editing = null)
+    /// <param name="initialDate">신규 등록 시(달력에서 날짜를 클릭한 경우) 미리 채워 넣을 날짜.</param>
+    public ScheduleRegisterForm(
+        WorkSupportApiClient api, SessionManager session, SchoolEvent? editing = null, DateTime? initialDate = null)
     {
         _api = api;
         _session = session;
@@ -91,18 +98,20 @@ public sealed class ScheduleRegisterForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(400, 380);
+        ClientSize = new Size(400, 388);
 
         Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "제목" });
-        Controls.Add(new Label { Left = 20, Top = 58, Width = 90, Text = "담당업무" });
-        Controls.Add(new Label { Left = 20, Top = 93, Width = 90, Text = "시작" });
-        Controls.Add(new Label { Left = 20, Top = 125, Width = 90, Text = "종료" });
-        Controls.Add(new Label { Left = 20, Top = 187, Width = 90, Text = "장소" });
+        Controls.Add(new Label { Left = 20, Top = 91, Width = 90, Text = "시작" });
+        Controls.Add(new Label { Left = 20, Top = 123, Width = 90, Text = "종료" });
+        Controls.Add(new Label { Left = 20, Top = 156, Width = 90, Text = "담당업무" });
+        Controls.Add(new Label { Left = 20, Top = 191, Width = 90, Text = "장소" });
         Controls.Add(_titleBox);
-        Controls.Add(_deptBox);
-        Controls.Add(_startPicker);
-        Controls.Add(_endPicker);
         Controls.Add(_allDayBox);
+        Controls.Add(_startDatePicker);
+        Controls.Add(_startTimePicker);
+        Controls.Add(_endDatePicker);
+        Controls.Add(_endTimePicker);
+        Controls.Add(_deptBox);
         Controls.Add(_locationBox);
         Controls.Add(_noteBox);
         Controls.Add(_saveButton);
@@ -113,25 +122,86 @@ public sealed class ScheduleRegisterForm : Form
 
         PopulateDeptBox();
 
+        var now = RoundToNextHalfHour(DateTime.Now);
+        var baseDate = initialDate?.Date ?? now.Date;
+        _startDatePicker.Value = baseDate;
+        _startTimePicker.Value = baseDate + now.TimeOfDay;
+        _endDatePicker.Value = baseDate;
+        _endTimePicker.Value = baseDate + now.TimeOfDay.Add(TimeSpan.FromHours(1));
+
         if (editing is not null)
         {
             _titleBox.Text = editing.Title;
             SelectDept(editing.DeptId);
             _allDayBox.Checked = editing.AllDay;
-            if (editing.StartDateTime != DateTime.MinValue) _startPicker.Value = editing.StartDateTime;
-            if (editing.EndDateTime != DateTime.MinValue) _endPicker.Value = editing.EndDateTime;
+
+            if (editing.StartDateTime != DateTime.MinValue)
+            {
+                _startDatePicker.Value = editing.StartDateTime.Date;
+                _startTimePicker.Value = editing.StartDateTime;
+            }
+
+            if (editing.EndDateTime != DateTime.MinValue)
+            {
+                _endDatePicker.Value = editing.EndDateTime.Date;
+                _endTimePicker.Value = editing.EndDateTime;
+            }
+
             _locationBox.Text = editing.Location ?? "";
             _noteBox.Text = editing.Note ?? "";
         }
 
-        _allDayBox.CheckedChanged += (_, _) =>
-        {
-            _startPicker.ShowUpDown = !_allDayBox.Checked;
-            _endPicker.ShowUpDown = !_allDayBox.Checked;
-        };
+        ApplyAllDayVisibility();
+
+        _allDayBox.CheckedChanged += (_, _) => ApplyAllDayVisibility();
+        _startDatePicker.ValueChanged += (_, _) => OnStartChanged();
+        _startTimePicker.ValueChanged += (_, _) => OnStartChanged();
 
         _saveButton.Click += OnSaveClicked;
         _cancelButton.Click += (_, _) => Close();
+    }
+
+    /// <summary>구글 캘린더처럼 "종일"이면 시간 입력을 감추고 날짜만 받습니다.</summary>
+    private void ApplyAllDayVisibility()
+    {
+        var allDay = _allDayBox.Checked;
+        _startTimePicker.Visible = !allDay;
+        _endTimePicker.Visible = !allDay;
+    }
+
+    /// <summary>시작 일시가 종료보다 늦어지면, 기존 소요 시간만큼 종료도 함께 밀어줍니다(구글 캘린더 방식).</summary>
+    private void OnStartChanged()
+    {
+        if (_suppressAutoAdjust)
+        {
+            return;
+        }
+
+        var start = CombineDateTime(_startDatePicker, _startTimePicker);
+        var end = CombineDateTime(_endDatePicker, _endTimePicker);
+        if (start < end)
+        {
+            return;
+        }
+
+        // 시작이 종료보다 늦어지면 1시간짜리 일정으로 종료를 다시 맞춘다.
+        var newEnd = start.AddHours(1);
+
+        _suppressAutoAdjust = true;
+        _endDatePicker.Value = newEnd.Date;
+        _endTimePicker.Value = newEnd;
+        _suppressAutoAdjust = false;
+    }
+
+    private static DateTime CombineDateTime(DateTimePicker datePart, DateTimePicker timePart)
+    {
+        return datePart.Value.Date + timePart.Value.TimeOfDay;
+    }
+
+    private static DateTime RoundToNextHalfHour(DateTime value)
+    {
+        var minutes = value.Minute < 30 ? 30 - value.Minute : 60 - value.Minute;
+        return value.AddMinutes(minutes).AddSeconds(-value.Second);
     }
 
     private void PopulateDeptBox()
@@ -192,6 +262,17 @@ public sealed class ScheduleRegisterForm : Form
             return;
         }
 
+        var allDay = _allDayBox.Checked;
+        var start = allDay ? _startDatePicker.Value.Date : CombineDateTime(_startDatePicker, _startTimePicker);
+        var end = allDay ? _endDatePicker.Value.Date : CombineDateTime(_endDatePicker, _endTimePicker);
+
+        if (end < start)
+        {
+            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.Text = "종료 일시가 시작 일시보다 빠를 수 없습니다.";
+            return;
+        }
+
         _saveButton.Enabled = false;
         _statusLabel.ForeColor = Color.Firebrick;
         _statusLabel.Text = _editing is null ? "등록 중..." : "수정 중...";
@@ -204,9 +285,9 @@ public sealed class ScheduleRegisterForm : Form
                 Title = title,
                 DeptId = selectedDeptId,
                 CreatedBy = _editing?.CreatedBy ?? _session.Profile?.UserId,
-                AllDay = _allDayBox.Checked,
-                Start = _startPicker.Value.ToString("yyyy-MM-ddTHH:mm"),
-                End = _endPicker.Value.ToString("yyyy-MM-ddTHH:mm"),
+                AllDay = allDay,
+                Start = start.ToString("yyyy-MM-ddTHH:mm"),
+                End = end.ToString("yyyy-MM-ddTHH:mm"),
                 Location = _locationBox.Text.Trim(),
                 Note = _noteBox.Text.Trim(),
             };

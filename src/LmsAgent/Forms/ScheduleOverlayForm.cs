@@ -17,12 +17,9 @@ namespace LmsAgent.Forms;
 /// </summary>
 public sealed class ScheduleOverlayForm : Form
 {
-    private static readonly Color[] DeptFallbackColors =
-    {
-        Color.FromArgb(11, 128, 67), Color.FromArgb(142, 36, 170), Color.FromArgb(230, 124, 0),
-        Color.FromArgb(3, 155, 213), Color.FromArgb(216, 27, 96),
-    };
+    private static readonly Color DefaultDeptColor = Color.FromArgb(120, 130, 140);
 
+    private Dictionary<int, Color> _deptColors = new();
     private ScheduleOutputUnit _unit = ScheduleOutputUnit.Week;
     private DateTime _periodStart = DateTime.Today;
     private List<SchoolEvent> _events = new();
@@ -74,6 +71,19 @@ public sealed class ScheduleOverlayForm : Form
         _periodStart = periodStart;
         _events = events;
         Invalidate();
+    }
+
+    /// <summary>DB(school_departments.color)에 저장된 실제 담당업무 색상으로 갱신합니다.</summary>
+    public void SetDepartmentColors(Dictionary<int, Color> colors)
+    {
+        _deptColors = colors;
+        Invalidate();
+    }
+
+    /// <summary>환경설정 &gt; 학사일정의 투명도(0~100%)를 적용합니다.</summary>
+    public void SetOpacityPercent(int percent)
+    {
+        Opacity = Math.Clamp(percent, 10, 100) / 100.0;
     }
 
     /// <summary>다른 창들 뒤로 보내 배경화면처럼 보이게 합니다 (근사 구현).</summary>
@@ -209,7 +219,11 @@ public sealed class ScheduleOverlayForm : Form
 
     private Color DeptColor(int? deptId)
     {
-        if (deptId is null) return Color.FromArgb(120, 130, 140);
-        return DeptFallbackColors[Math.Abs(deptId.Value) % DeptFallbackColors.Length];
+        if (deptId is int id && _deptColors.TryGetValue(id, out var color))
+        {
+            return color;
+        }
+
+        return DefaultDeptColor;
     }
 }

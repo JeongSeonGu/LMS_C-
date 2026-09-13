@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -26,6 +27,13 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         Left = 130, Top = 85, Width = 300, Text = "배경화면처럼 항상 출력",
     };
 
+    private readonly TrackBar _opacityTrack = new()
+    {
+        Left = 130, Top = 115, Width = 200, Minimum = 10, Maximum = 100, TickFrequency = 10,
+    };
+
+    private readonly Label _opacityValueLabel = new() { Left = 335, Top = 122, Width = 50 };
+
     public string CategoryName => "학사일정";
 
     public ScheduleOptionsPage()
@@ -44,9 +52,12 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         Controls.Add(_weekRadio);
         Controls.Add(_monthRadio);
         Controls.Add(_wallpaperBox);
+        Controls.Add(new Label { Left = 20, Top = 122, Width = 100, Text = "투명도" });
+        Controls.Add(_opacityTrack);
+        Controls.Add(_opacityValueLabel);
         Controls.Add(new Label
         {
-            Left = 20, Top = 112, Width = 380, Height = 55,
+            Left = 20, Top = 152, Width = 380, Height = 55,
             ForeColor = Color.Gray,
             Text = "주 단위: 선택한 모니터 하단에 이번 주 학사달력을 표시합니다.\n" +
                    "월 단위: 선택한 모니터 화면 전체를 이번 달 학사달력으로 채웁니다.",
@@ -56,7 +67,12 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         {
             _monitorBox.Items.Add(option);
         }
+
+        _opacityTrack.ValueChanged += (_, _) => UpdateOpacityLabel();
+        UpdateOpacityLabel();
     }
+
+    private void UpdateOpacityLabel() => _opacityValueLabel.Text = $"{_opacityTrack.Value}%";
 
     public void LoadFrom(AppSettings settings)
     {
@@ -64,6 +80,8 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         _weekRadio.Checked = settings.ScheduleOutputUnit == ScheduleOutputUnit.Week;
         _monthRadio.Checked = settings.ScheduleOutputUnit == ScheduleOutputUnit.Month;
         _wallpaperBox.Checked = settings.ScheduleWallpaperEnabled;
+        _opacityTrack.Value = Math.Clamp(settings.ScheduleOverlayOpacityPercent, _opacityTrack.Minimum, _opacityTrack.Maximum);
+        UpdateOpacityLabel();
     }
 
     public void SaveTo(AppSettings settings)
@@ -71,6 +89,7 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         settings.ScheduleMonitorIndex = (_monitorBox.SelectedItem as MonitorOption)?.Index ?? 0;
         settings.ScheduleOutputUnit = _monthRadio.Checked ? ScheduleOutputUnit.Month : ScheduleOutputUnit.Week;
         settings.ScheduleWallpaperEnabled = _wallpaperBox.Checked;
+        settings.ScheduleOverlayOpacityPercent = _opacityTrack.Value;
     }
 
     internal static void SelectMonitor(ComboBox box, int index)

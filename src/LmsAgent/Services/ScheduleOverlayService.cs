@@ -16,13 +16,15 @@ namespace LmsAgent.Services;
 public sealed class ScheduleOverlayService : IDisposable
 {
     private readonly WorkSupportApiClient _api;
+    private readonly SessionManager _session;
     private readonly AppSettings _settings;
     private readonly Timer _timer;
     private ScheduleOverlayForm? _overlay;
 
-    public ScheduleOverlayService(WorkSupportApiClient api, AppSettings settings)
+    public ScheduleOverlayService(WorkSupportApiClient api, SessionManager session, AppSettings settings)
     {
         _api = api;
+        _session = session;
         _settings = settings;
         _timer = new Timer { Interval = (int)TimeSpan.FromMinutes(30).TotalMilliseconds };
         _timer.Tick += async (_, _) => await RefreshAsync();
@@ -43,6 +45,8 @@ public sealed class ScheduleOverlayService : IDisposable
             DisplayHelper.ResolveScreen(_settings.ScheduleMonitorIndex),
             _settings.ScheduleOutputUnit,
             _settings.SchoolName);
+        _overlay.SetOpacityPercent(_settings.ScheduleOverlayOpacityPercent);
+        _overlay.SetDepartmentColors(_session.GetDepartmentColorMap());
 
         if (!_overlay.Visible)
         {
@@ -71,6 +75,9 @@ public sealed class ScheduleOverlayService : IDisposable
 
         try
         {
+            await _session.EnsureDepartmentsLoadedAsync(_api).ConfigureAwait(true);
+            _overlay.SetDepartmentColors(_session.GetDepartmentColorMap());
+
             List<SchoolEvent> events;
             DateTime periodStart;
 

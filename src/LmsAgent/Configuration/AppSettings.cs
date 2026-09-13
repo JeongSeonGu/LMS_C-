@@ -36,6 +36,10 @@ public sealed class AppSettings
     /// <summary>화면 상단 표시/인쇄물 등에 사용할 학교명. 로그인 시 서버 값으로 최초 1회 채워집니다.</summary>
     public string SchoolName { get; set; } = "";
 
+    /// <summary>체크 시 로그인 직후 오늘의 일정·요청사항·공지·해야 할 일·법정연수·협의사항을
+    /// 모아 보여주는 요약 팝업을 띄웁니다. 기본값은 미체크입니다.</summary>
+    public bool ShowStartupNoticeModal { get; set; }
+
     // ── 프로그램 동작 ─────────────────────────────────────────
     public bool AutoStartWithWindows { get; set; } = true;
     public string? SavedLoginId { get; set; }
@@ -49,11 +53,17 @@ public sealed class AppSettings
     /// <summary>체크 시 배경화면처럼 학사달력을 상시 표시합니다.</summary>
     public bool ScheduleWallpaperEnabled { get; set; }
 
+    /// <summary>학사달력 배경화면 오버레이의 불투명도(0~100%). 100이면 완전 불투명.</summary>
+    public int ScheduleOverlayOpacityPercent { get; set; } = 85;
+
     // ── 복무 ──────────────────────────────────────────────────
     /// <summary>복무 알림 배너를 띄울 모니터의 Screen.AllScreens 인덱스.</summary>
     public int DutyMonitorIndex { get; set; }
     public bool DutyNotifyVicePrincipal { get; set; } // 교감
     public bool DutyNotifyPrincipal { get; set; }      // 교장
+
+    /// <summary>복무 알림 배너의 불투명도(0~100%). 100이면 완전 불투명.</summary>
+    public int DutyBannerOpacityPercent { get; set; } = 100;
 
     // ── 출력 ──────────────────────────────────────────────────
     public string? PrinterName { get; set; }

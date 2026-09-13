@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using LmsAgent.Models.WorkSupport;
@@ -88,6 +89,36 @@ public sealed class SessionManager
         }
 
         return Departments.Where(d => MyDeptIds.Contains(d.Id)).ToList();
+    }
+
+    /// <summary>로그인 여부와 무관하게 담당업무(부서) 목록만 채웁니다. 이미 불러왔으면 다시 요청하지 않습니다.
+    /// 학사달력 배경화면 오버레이 등 로그인 전에도 동작해야 하는 기능에서 사용합니다.</summary>
+    public async Task EnsureDepartmentsLoadedAsync(WorkSupportApiClient api)
+    {
+        if (Departments.Count > 0)
+        {
+            return;
+        }
+
+        var result = await api.GetDepartmentsAsync().ConfigureAwait(false);
+        if (result.Ok && result.Data is not null)
+        {
+            Departments = result.Data;
+        }
+    }
+
+    private static readonly Color DefaultDeptColor = Color.FromArgb(154, 160, 166);
+
+    /// <summary>담당업무 id → 서버에 등록된 실제 색상. DB에 저장된 값과 화면 표시 색상을 일치시킵니다.</summary>
+    public Dictionary<int, Color> GetDepartmentColorMap()
+    {
+        var map = new Dictionary<int, Color>();
+        foreach (var dept in Departments)
+        {
+            map[dept.Id] = ColorHelper.ParseHexOrDefault(dept.Color, DefaultDeptColor);
+        }
+
+        return map;
     }
 
     public void Clear()

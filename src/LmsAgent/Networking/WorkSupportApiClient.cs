@@ -206,6 +206,144 @@ public sealed class WorkSupportApiClient : IDisposable
     }
 
     /* =========================================================
+     * 기본정보 > 학교기본정보 (조회 전용)
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<SchoolInfoResult>> GetSchoolInfoAsync()
+    {
+        return await GetJsonAsync<SchoolInfoResult>("php/features/school.php?action=get").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 기본정보 > 공통계정 (조회 전용, 비밀번호는 "보기"로만 확인)
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<SharedAccountListResult>> GetSharedAccountsAsync()
+    {
+        return await GetJsonAsync<SharedAccountListResult>("php/features/accounts.php?action=list").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<SharedAccountSecret>> RevealSharedAccountAsync(int id)
+    {
+        return await GetJsonAsync<SharedAccountSecret>($"php/features/accounts.php?action=reveal&id={id}")
+            .ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 기본정보 > 요청사항 (조회/등록, 본인 것만 수정/삭제)
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<RequestMeta>> GetRequestMetaAsync()
+    {
+        return await GetJsonAsync<RequestMeta>("php/features/requests.php?action=meta").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<RequestListResult>> GetRequestsAsync(string scope = "all", string? category = null)
+    {
+        var path = $"php/features/requests.php?action=list&scope={Uri.EscapeDataString(scope)}";
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            path += $"&category={Uri.EscapeDataString(category)}";
+        }
+
+        return await GetJsonAsync<RequestListResult>(path).ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<RequestDetailResult>> GetRequestDetailAsync(int id)
+    {
+        return await GetJsonAsync<RequestDetailResult>($"php/features/requests.php?action=detail&id={id}")
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>대상은 항상 "전체 공개"로 등록합니다(개별 수신자 지정 UI는 제공하지 않습니다).</summary>
+    public async Task<ApiEnvelope<object>> SaveRequestAsync(
+        int id, string title, string body, string category, string priority, string status, string? dueDate)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["action"] = "save",
+            ["id"] = id > 0 ? id.ToString() : "0",
+            ["title"] = title,
+            ["body"] = body,
+            ["category"] = category,
+            ["priority"] = priority,
+            ["status"] = status,
+            ["target_type"] = "all",
+            ["notify_app"] = "0",
+            ["notify_sms"] = "0",
+        };
+        if (!string.IsNullOrWhiteSpace(dueDate))
+        {
+            fields["due_date"] = dueDate;
+        }
+
+        return await PostFormAsync<object>("php/features/requests.php", new FormUrlEncodedContent(fields))
+            .ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<object>> DeleteRequestAsync(int id)
+    {
+        var fields = new Dictionary<string, string> { ["action"] = "delete", ["id"] = id.ToString() };
+        return await PostFormAsync<object>("php/features/requests.php", new FormUrlEncodedContent(fields))
+            .ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 기본정보 > 협의사항 (조회 전용 — 서버가 Google 시트를 그대로 읽어오는 구조라
+     * 등록/수정/삭제 API가 없습니다. 새 안건 등록은 설정된 외부 링크로 안내합니다.)
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<MeetingsListResult>> GetMeetingsAsync(string source = "recent")
+    {
+        return await GetJsonAsync<MeetingsListResult>(
+            $"php/features/meetings.php?action=list&source={Uri.EscapeDataString(source)}").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<MeetingsTodoResult>> GetMeetingsTodoAsync()
+    {
+        return await GetJsonAsync<MeetingsTodoResult>("php/features/meetings.php?action=todo").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 기본정보 > 길라잡이 (문서 카탈로그 조회 + 다운로드)
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<GuideCatalogResult>> GetGuideCatalogAsync()
+    {
+        return await GetJsonAsync<GuideCatalogResult>("php/public/catalog.php").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 첫 화면 공지사항 요약용
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<TrainingMyResult>> GetMyTrainingAsync()
+    {
+        return await GetJsonAsync<TrainingMyResult>("php/features/training.php?action=my").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 인증이 필요한 파일 다운로드(길라잡이 문서, 학교 로고 등)
+     * 서버가 내려주는 경로는 "/SchoolWork/WorkSupport/..." 형태의 호스트 기준 절대 경로입니다.
+     * ========================================================= */
+
+    /// <summary>서버가 내려준 호스트 기준 절대 경로를 현재 접속 호스트의 완전한 URL로 변환합니다.</summary>
+    public Uri ResolveServerPath(string absoluteServerPath) => new(BaseUri, absoluteServerPath);
+
+    public async Task<(byte[] Bytes, string? ContentType, string? FileName)> DownloadFileAsync(Uri uri)
+    {
+        using var response = await _http.GetAsync(uri).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+                       ?? response.Content.Headers.ContentDisposition?.FileName;
+
+        return (bytes, contentType, fileName?.Trim('"'));
+    }
+
+    /* =========================================================
      * 공통 HTTP 헬퍼
      * ========================================================= */
 

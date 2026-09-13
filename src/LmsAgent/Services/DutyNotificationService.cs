@@ -103,6 +103,7 @@ public sealed class DutyNotificationService : IDisposable
     {
         _banner ??= new DutyBannerForm();
         _banner.UpdateContent(text, urgent);
+        _banner.SetOpacityPercent(_settings.DutyBannerOpacityPercent);
         _banner.PositionTopRight(DisplayHelper.ResolveScreen(_settings.DutyMonitorIndex));
         if (!_banner.Visible)
         {
