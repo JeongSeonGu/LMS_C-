@@ -15,19 +15,22 @@ public enum ScheduleOutputUnit
 public sealed class AppSettings
 {
     // ── 네트워크 ──────────────────────────────────────────────
-    /// <summary>LMS 연동용 웹소켓 서버 주소. WorkSupport HTTP API도 같은 호스트를 사용합니다.</summary>
+    /// <summary>
+    /// 서버가 클라이언트에 작업을 요청/응답하는 실시간 연동용 웹소켓 주소.
+    /// 실제 학사 데이터 API(WorkSupport 웹 서비스)는 별도 호스트(<see cref="ApiBaseUrlOverride"/>)를 통합니다.
+    /// </summary>
     public string ServerUrl { get; set; } = "wss://node2.future-class.kr/ws";
 
     /// <summary>업데이트 매니페스트(버전 정보)를 확인할 주소.</summary>
     public string UpdateManifestUrl { get; set; } = "https://node2.future-class.kr/update/manifest.json";
 
     /// <summary>
-    /// WorkSupport(교무업무) 웹 서비스의 실제 접속 주소(예: "https://school.example.com/SchoolWork/WorkSupport").
-    /// 비워두면 위 웹소켓 서버 주소에서 스킴만 http(s)로 바꿔 자동으로 유도합니다.
-    /// 로그인 시 "서버 응답 형식이 올바르지 않습니다" 오류가 나면 웹소켓 서버와 호스트/경로가
-    /// 다르다는 뜻이므로 여기에 실제 주소를 직접 입력하세요.
+    /// WorkSupport(교무업무) 웹 서비스의 실제 접속 주소. 웹소켓 서버는 실시간 연동 전용이고
+    /// 학사 데이터 API는 이 주소(웹 서버)를 통해 이루어지므로 반드시 따로 지정합니다.
+    /// 비워두면(값이 없으면) 웹소켓 서버 주소에서 스킴만 http(s)로 바꿔 유도하지만,
+    /// 두 서버가 서로 다른 호스트이면 이 값을 직접 입력해야 합니다.
     /// </summary>
-    public string? ApiBaseUrlOverride { get; set; }
+    public string? ApiBaseUrlOverride { get; set; } = "https://future-class.kr/SchoolWork/WorkSupport";
 
     // ── 일반 ──────────────────────────────────────────────────
     /// <summary>화면 상단 표시/인쇄물 등에 사용할 학교명. 로그인 시 서버 값으로 최초 1회 채워집니다.</summary>
