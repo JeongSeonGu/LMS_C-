@@ -205,6 +205,46 @@ public sealed class WorkSupportApiClient : IDisposable
             $"SchoolCalendar/php/api/duty_status.php?action=list&year={year}&month={month}").ConfigureAwait(false);
     }
 
+    /// <summary>현재 로그인 계정이 복무사항을 기록할 수 있는지(role=admin 또는 교장/교감/교무부장/행정실장) 확인합니다.</summary>
+    public async Task<ApiEnvelope<DutyManageInfo>> GetDutyCanManageAsync()
+    {
+        return await GetJsonAsync<DutyManageInfo>(
+            "SchoolCalendar/php/api/duty_status.php?action=can_manage").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<DutyWriteResult>> AddDutyAsync(DutyRecord record)
+    {
+        var request = ToDutyWriteRequest("add", record);
+        return await PostJsonAsync<DutyWriteRequest, DutyWriteResult>(
+            "SchoolCalendar/php/api/duty_status.php", request).ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<DutyWriteResult>> UpdateDutyAsync(DutyRecord record)
+    {
+        var request = ToDutyWriteRequest("update", record);
+        return await PostJsonAsync<DutyWriteRequest, DutyWriteResult>(
+            "SchoolCalendar/php/api/duty_status.php", request).ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<DutyWriteResult>> DeleteDutyAsync(int id)
+    {
+        var request = new DutyDeleteRequest { Action = "delete", Id = id };
+        return await PostJsonAsync<DutyDeleteRequest, DutyWriteResult>(
+            "SchoolCalendar/php/api/duty_status.php", request).ConfigureAwait(false);
+    }
+
+    private static DutyWriteRequest ToDutyWriteRequest(string action, DutyRecord r) => new()
+    {
+        Action = action,
+        Id = r.Id > 0 ? r.Id : null,
+        Date = r.Date,
+        Position = r.Position,
+        DutyType = r.DutyType,
+        TimeStart = r.TimeStart,
+        TimeEnd = r.TimeEnd,
+        Note = r.Note,
+    };
+
     /* =========================================================
      * 기본정보 > 학교기본정보 (조회 전용)
      * ========================================================= */
@@ -426,9 +466,33 @@ public sealed class WorkSupportApiClient : IDisposable
         [JsonPropertyName("action")] public string Action { get; set; } = "";
         [JsonPropertyName("id")] public int Id { get; set; }
     }
+
+    private sealed class DutyWriteRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] public int? Id { get; set; }
+        [JsonPropertyName("date")] public string Date { get; set; } = "";
+        [JsonPropertyName("position")] public string Position { get; set; } = "";
+        [JsonPropertyName("dutyType")] public string DutyType { get; set; } = "";
+        [JsonPropertyName("timeStart")] public string? TimeStart { get; set; }
+        [JsonPropertyName("timeEnd")] public string? TimeEnd { get; set; }
+        [JsonPropertyName("note")] public string? Note { get; set; }
+    }
+
+    private sealed class DutyDeleteRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] public int Id { get; set; }
+    }
 }
 
 public sealed class EventWriteResult
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("uuid")] public string? Uuid { get; set; }
+}
+
+public sealed class DutyWriteResult
 {
     [JsonPropertyName("id")] public int Id { get; set; }
     [JsonPropertyName("uuid")] public string? Uuid { get; set; }

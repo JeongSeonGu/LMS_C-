@@ -8,6 +8,12 @@ namespace LmsAgent.Models.WorkSupport;
 /// </summary>
 public sealed class DutyRecord
 {
+    /// <summary>서버(duty_status.php)가 허용하는 기록 대상 직위.</summary>
+    public static readonly string[] Positions = { "교장", "교감", "교무부장", "행정실장" };
+
+    /// <summary>서버(duty_status.php)가 허용하는 복무 구분.</summary>
+    public static readonly string[] DutyTypes = { "연가", "출장", "조퇴" };
+
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
@@ -35,4 +41,18 @@ public sealed class DutyRecord
     public string? Note { get; set; }
 
     public DateOnly? DateValue => DateOnly.TryParse(Date, out var d) ? d : null;
+
+    /// <summary>시간이 없으면(TimeStart/TimeEnd 모두 null) 종일 기록입니다.</summary>
+    public bool IsAllDay => string.IsNullOrWhiteSpace(TimeStart) && string.IsNullOrWhiteSpace(TimeEnd);
+}
+
+/// <summary>현재 로그인 계정이 복무사항을 기록(등록/수정/삭제)할 수 있는지 여부.</summary>
+public sealed class DutyManageInfo
+{
+    [JsonPropertyName("canManage")]
+    public bool CanManage { get; set; }
+
+    /// <summary>기록 권한이 있을 때의 근거 직위("교장" 등) 또는 관리자 계정이면 "admin".</summary>
+    [JsonPropertyName("position")]
+    public string? Position { get; set; }
 }

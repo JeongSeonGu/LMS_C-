@@ -54,6 +54,7 @@ src/LmsAgent/
     ScheduleRegisterForm.cs                    학사 일정 등록·수정(구글 캘린더 스타일 종일/시간 입력)
     ScheduleListForm.cs / MonthCalendarView.cs / EventDetailForm.cs
                                                 학사 일정 월간 달력 보기, 일정 칩, 상세 팝업
+    DutyRegisterForm.cs / DutyEditForm.cs      학사 일정 &gt; 복무등록(교장/교감/교무부장/행정실장의 연가·출장·조퇴 기록)
     OptionsForm.cs / OptionsPages/*.cs         환경설정(Visual Studio 옵션 창 스타일)
     DutyBannerForm.cs / ScheduleOverlayForm.cs 복무 알림 배너 / 학사달력 오버레이 창
     SchoolInfoForm.cs                          기본정보 &gt; 학교기본정보(조회 전용 모달)
@@ -75,6 +76,7 @@ src/LmsAgent/
 - **학사 일정**
   - 일정 등록...
   - 일정 목록... (구글 캘린더 스타일 월간 보기, 등록/수정/삭제)
+  - 복무등록... (교장/교감/교무부장/행정실장의 연가·출장·조퇴 기록, 아래 "복무등록" 참고)
 - **사용자 정보**
   - 로그인...
   - 정보 수정... (로그인 후 활성화)
@@ -113,7 +115,9 @@ src/LmsAgent/
 | 담당업무 목록 | `GET SchoolCalendar/php/api/departments.php?action=list` | 학사 일정에 연결할 "업무" 목록과 **색상**(`color`) |
 | 교사 상세(담당업무 다건) | `GET SchoolCalendar/php/api/teachers.php?action=get&id=` | school_teacher_departments(N:M) 기준 본인 담당업무 전체 조회 |
 | 학사 일정 목록/등록/수정/삭제 | `SchoolCalendar/php/api/events.php` (`action=list\|add\|update\|delete`) | 학사 일정 CRUD, `deptId`가 담당업무 |
-| 복무(연가/출장/조퇴) 목록 | `GET SchoolCalendar/php/api/duty_status.php?action=list` | 교장/교감 등 복무 변동사항 |
+| 복무(연가/출장/조퇴) 목록 | `GET SchoolCalendar/php/api/duty_status.php?action=list` | 교장/교감 등 복무 변동사항(전체 사용자 열람 가능) |
+| 복무 기록 권한 확인 | `GET SchoolCalendar/php/api/duty_status.php?action=can_manage` | 현재 계정이 기록 가능한지, 어떤 직위 자격인지 확인 |
+| 복무 기록 등록/수정/삭제 | `POST SchoolCalendar/php/api/duty_status.php` (`action=add\|update\|delete`, JSON body) | `role=admin` 또는 `school_teachers.position`이 교장/교감/교무부장/행정실장인 계정만 가능 |
 
 ### 기본정보 메뉴 (신규)
 
@@ -185,6 +189,22 @@ src/LmsAgent/
 내려갑니다(`SetWindowPos(HWND_BOTTOM)`). **실제 바탕화면(WorkerW)에 자식으로 삽입하는 방식이
 아니라 다른 창들 뒤로 보내 배경처럼 보이게 하는 근사적인 구현**이며, 30분 주기로 최신 일정을
 다시 불러옵니다.
+
+## 복무등록
+
+트레이 메뉴 "학사 일정 &gt; 복무등록..."에서 교장·교감·교무부장·행정실장의 연가·출장·조퇴
+기록을 월 단위로 조회하고 등록/수정/삭제할 수 있습니다.
+
+- **조회는 로그인한 누구나** 가능합니다(복무 알림 배너·배경화면 오버레이가 참고하는 것과
+  같은 `duty_status.php?action=list` 데이터를 그대로 보여줍니다).
+- **등록/수정/삭제는 서버가 최종 판단합니다.** 화면을 열면 먼저
+  `action=can_manage`로 현재 계정의 기록 권한을 확인하고, 권한이 없으면(교장/교감/
+  교무부장/행정실장이 아니고 관리자 계정도 아니면) 등록/수정/삭제 버튼을 비활성화한 채
+  조회만 제공합니다.
+- 등록/수정 창에서는 **대상**(교장/교감/교무부장/행정실장), **구분**(연가/출장/조퇴),
+  **날짜**, **종일 체크박스**, **메모(선택)**를 입력합니다. "종일"을 체크하거나 시간을
+  입력하지 않으면 시간 없이 종일 기록으로 저장되고, 체크를 해제하면 시작/종료 시간을
+  따로 입력할 수 있습니다(종료가 시작보다 빠르면 저장하지 않습니다).
 
 ## 복무 알림 배너
 
