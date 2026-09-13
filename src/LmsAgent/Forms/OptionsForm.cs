@@ -106,7 +106,7 @@ public sealed class OptionsForm : Form
     {
         foreach (var page in _pages)
         {
-            var error = page.Validate();
+            var error = page.ValidateSettings();
             if (error is not null)
             {
                 MessageBox.Show(error, "환경설정", MessageBoxButtons.OK, MessageBoxIcon.Warning);

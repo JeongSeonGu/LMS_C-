@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Forms;
 using LmsAgent.Models.WorkSupport;
 using LmsAgent.Networking;
+using Timer = System.Windows.Forms.Timer;
 
 namespace LmsAgent.Services;
 

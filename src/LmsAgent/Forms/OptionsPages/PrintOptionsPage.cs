@@ -71,7 +71,7 @@ public sealed class PrintOptionsPage : UserControl, IOptionsPage
         settings.PrintDailyScheduleEnabled = _autoPrintBox.Checked;
     }
 
-    public string? Validate()
+    public string? ValidateSettings()
     {
         if (_autoPrintBox.Checked && _printerBox.SelectedItem is null)
         {

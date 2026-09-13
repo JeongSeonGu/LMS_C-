@@ -55,7 +55,7 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         settings.UpdateManifestUrl = _updateUrlBox.Text.Trim();
     }
 
-    public string? Validate()
+    public string? ValidateSettings()
     {
         if (!Uri.TryCreate(_serverUrlBox.Text.Trim(), UriKind.Absolute, out _))
         {
