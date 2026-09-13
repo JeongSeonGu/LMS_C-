@@ -18,13 +18,20 @@ public sealed class LoginForm : Form
     private readonly Button _loginButton = new() { Left = 110, Top = 118, Width = 90, Text = "로그인" };
     private readonly Button _cancelButton = new() { Left = 220, Top = 118, Width = 90, Text = "취소" };
 
-    private readonly Label _statusLabel = new()
+    // 진단 메시지(응답 스니펫 포함)가 길어질 수 있어 스크롤/복사가 가능한 읽기 전용 텍스트박스로 표시한다.
+    private readonly TextBox _statusLabel = new()
     {
         Left = 20,
         Top = 152,
         Width = 290,
-        Height = 40,
+        Height = 90,
+        Multiline = true,
+        ReadOnly = true,
+        BorderStyle = BorderStyle.None,
+        BackColor = SystemColors.Control,
+        ScrollBars = ScrollBars.Vertical,
         ForeColor = Color.Firebrick,
+        TabStop = false,
     };
 
     public bool SaveLoginId => _saveIdBox.Checked;
@@ -42,7 +49,7 @@ public sealed class LoginForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(330, 200);
+        ClientSize = new Size(330, 250);
 
         Controls.Add(new Label { Left = 20, Top = 23, Width = 80, Text = "아이디" });
         Controls.Add(new Label { Left = 20, Top = 58, Width = 80, Text = "비밀번호" });

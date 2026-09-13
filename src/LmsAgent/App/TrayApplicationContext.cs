@@ -45,7 +45,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _wsClient.StateChanged += OnConnectionStateChanged;
         _wsClient.TaskRequested += OnTaskRequested;
 
-        _api = new WorkSupportApiClient(_settings.ServerUrl);
+        _api = new WorkSupportApiClient(_settings.ServerUrl, _settings.ApiBaseUrlOverride);
 
         _dutyService = new DutyNotificationService(_api, _settings);
         _scheduleOverlayService = new ScheduleOverlayService(_api, _settings);
@@ -230,7 +230,8 @@ public sealed class TrayApplicationContext : ApplicationContext
             _scheduleOverlayService.ApplySettings();
 
             MessageBox.Show(
-                "설정이 저장되었습니다. 웹소켓 서버 주소 변경 사항은 프로그램을 다시 시작해야 적용됩니다.",
+                "설정이 저장되었습니다. 웹소켓 서버/WorkSupport 서버 주소 변경 사항은 " +
+                "프로그램을 다시 시작해야 적용됩니다.",
                 "환경설정", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }

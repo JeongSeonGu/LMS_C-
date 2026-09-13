@@ -34,9 +34,16 @@ public sealed class WorkSupportApiClient : IDisposable
 
     public Uri BaseUri { get; }
 
-    public WorkSupportApiClient(string serverUrl)
+    /// <param name="serverUrl">웹소켓 서버 주소. apiBaseUrlOverride가 없으면 이 주소에서 API 기준 주소를 유도한다.</param>
+    /// <param name="apiBaseUrlOverride">
+    /// WorkSupport 웹 서비스의 실제 접속 주소(예: "https://school.example.com/SchoolWork/WorkSupport").
+    /// 웹소켓 서버와 호스트/경로가 다를 때 환경설정 &gt; 네트워크에서 직접 지정할 수 있다.
+    /// </param>
+    public WorkSupportApiClient(string serverUrl, string? apiBaseUrlOverride = null)
     {
-        BaseUri = ComputeApiBaseUri(serverUrl);
+        BaseUri = !string.IsNullOrWhiteSpace(apiBaseUrlOverride)
+            ? new Uri(apiBaseUrlOverride.EndsWith('/') ? apiBaseUrlOverride : apiBaseUrlOverride + "/")
+            : ComputeApiBaseUri(serverUrl);
 
         var handler = new HttpClientHandler
         {
@@ -204,15 +211,16 @@ public sealed class WorkSupportApiClient : IDisposable
 
     private async Task<ApiEnvelope<T>> GetJsonAsync<T>(string relativePath)
     {
-        var json = await _http.GetStringAsync(Resolve(relativePath)).ConfigureAwait(false);
-        return Deserialize<T>(json);
+        using var response = await _http.GetAsync(Resolve(relativePath)).ConfigureAwait(false);
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return Deserialize<T>(json, response.StatusCode, Resolve(relativePath));
     }
 
     private async Task<ApiEnvelope<T>> PostFormAsync<T>(string relativePath, FormUrlEncodedContent content)
     {
         using var response = await _http.PostAsync(Resolve(relativePath), content).ConfigureAwait(false);
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        return Deserialize<T>(json);
+        return Deserialize<T>(json, response.StatusCode, Resolve(relativePath));
     }
 
     private async Task<ApiEnvelope<TRes>> PostJsonAsync<TReq, TRes>(string relativePath, TReq body)
@@ -221,20 +229,41 @@ public sealed class WorkSupportApiClient : IDisposable
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
         using var response = await _http.PostAsync(Resolve(relativePath), content).ConfigureAwait(false);
         var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        return Deserialize<TRes>(responseJson);
+        return Deserialize<TRes>(responseJson, response.StatusCode, Resolve(relativePath));
     }
 
-    private static ApiEnvelope<T> Deserialize<T>(string json)
+    /// <summary>
+    /// 응답이 유효한 JSON 봉투가 아닐 때, 원인을 바로 알 수 있도록 요청 주소·HTTP 상태·
+    /// 응답 앞부분을 그대로 메시지에 담아 반환한다(서버 주소 오설정, PHP 경고 혼입, 404 HTML 등 진단용).
+    /// </summary>
+    private static ApiEnvelope<T> Deserialize<T>(string json, HttpStatusCode statusCode, Uri requestUri)
     {
         try
         {
-            return JsonSerializer.Deserialize<ApiEnvelope<T>>(json, JsonOptions)
-                   ?? new ApiEnvelope<T> { Ok = false, Message = "서버 응답을 해석할 수 없습니다." };
+            var envelope = JsonSerializer.Deserialize<ApiEnvelope<T>>(json, JsonOptions);
+            if (envelope is not null)
+            {
+                return envelope;
+            }
         }
         catch (JsonException)
         {
-            return new ApiEnvelope<T> { Ok = false, Message = "서버 응답 형식이 올바르지 않습니다." };
+            // 아래에서 진단 메시지로 대체한다.
         }
+
+        var snippet = json.Length > 300 ? json[..300] + "…" : json;
+        if (string.IsNullOrWhiteSpace(snippet))
+        {
+            snippet = "(빈 응답)";
+        }
+
+        return new ApiEnvelope<T>
+        {
+            Ok = false,
+            Message =
+                $"서버 응답 형식이 올바르지 않습니다. (HTTP {(int)statusCode}, 요청 주소: {requestUri})\n" +
+                $"환경설정 > 네트워크의 서버 주소가 올바른지 확인하세요.\n응답 내용: {snippet}",
+        };
     }
 
     public void Dispose() => _http.Dispose();
