@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms.OptionsPages;
 
@@ -24,30 +25,35 @@ public sealed class GeneralOptionsPage : UserControl, IOptionsPage
     public GeneralOptionsPage()
     {
         Dock = DockStyle.Fill;
+        BackColor = UiTheme.Surface;
+        Font = UiTheme.BaseFont;
 
-        Controls.Add(new Label
-        {
-            Left = 16, Top = 0, Width = 400, Height = 20,
-            Text = "일반",
-            Font = new Font(Font, FontStyle.Bold),
-        });
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 100, Text = "학교명" });
+        var header = new Label { Left = 16, Top = 0, Width = 400, Height = 24, Text = "일반" };
+        UiTheme.StyleHeaderLabel(header);
+        Controls.Add(header);
+
+        Controls.Add(new Label { Left = 20, Top = 27, Width = 100, Text = "학교명" });
         Controls.Add(_schoolNameBox);
-        Controls.Add(new Label
+
+        var schoolNameHint = new Label
         {
-            Left = 20, Top = 55, Width = 380, Height = 30,
-            ForeColor = Color.Gray,
+            Left = 20, Top = 59, Width = 380, Height = 30,
             Text = "화면 표시와 인쇄물 제목 등에 사용됩니다. 로그인하면 서버에 등록된 학교명으로 자동 채워집니다.",
-        });
+        };
+        UiTheme.StyleHintLabel(schoolNameHint);
+        Controls.Add(schoolNameHint);
+
         Controls.Add(_autoStartBox);
         Controls.Add(_startupNoticeBox);
-        Controls.Add(new Label
+
+        var startupHint = new Label
         {
             Left = 20, Top = 148, Width = 380, Height = 45,
-            ForeColor = Color.Gray,
             Text = "체크 시 로그인 직후 오늘의 일정, 요청사항, 안내 및 공지, 내가 해야 할 일,\n" +
                    "요청된 법정연수 이수 등록, 처리 중인 협의사항을 모아 보여줍니다. (기본값: 미체크)",
-        });
+        };
+        UiTheme.StyleHintLabel(startupHint);
+        Controls.Add(startupHint);
     }
 
     public void LoadFrom(AppSettings settings)

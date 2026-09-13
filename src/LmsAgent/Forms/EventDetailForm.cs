@@ -25,7 +25,7 @@ public sealed class EventDetailForm : Form
     {
         Left = 16, Top = 46, Width = 308, Height = 150,
         Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical,
-        BorderStyle = BorderStyle.None, BackColor = SystemColors.Control,
+        BorderStyle = BorderStyle.None, BackColor = UiTheme.Background,
     };
 
     private readonly Button _editButton = new() { Left = 16, Top = 208, Width = 80, Text = "수정" };
@@ -36,6 +36,7 @@ public sealed class EventDetailForm : Form
     {
         Text = "일정 상세";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -54,6 +55,11 @@ public sealed class EventDetailForm : Form
         Controls.Add(_closeButton);
 
         CancelButton = _closeButton;
+
+        UiTheme.StylePrimaryButton(_editButton);
+        UiTheme.StyleDangerButton(_deleteButton);
+        UiTheme.StyleSecondaryButton(_closeButton);
+        UiTheme.StyleSubHeaderLabel(_titleLabel);
 
         _editButton.Click += (_, _) => { SelectedAction = DetailAction.Edit; DialogResult = DialogResult.OK; Close(); };
         _deleteButton.Click += (_, _) => { SelectedAction = DetailAction.Delete; DialogResult = DialogResult.OK; Close(); };

@@ -13,7 +13,8 @@ public sealed class TaskRequestForm : Form
         Left = 20,
         Top = 20,
         Width = 340,
-        Font = new Font(FontFamily.GenericSansSerif, 10, FontStyle.Bold),
+        Font = UiTheme.SubTitleFont,
+        ForeColor = UiTheme.SkyDark,
     };
 
     private readonly TextBox _descriptionBox = new()
@@ -34,6 +35,7 @@ public sealed class TaskRequestForm : Form
     {
         Text = "새로운 작업 요청";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -43,6 +45,10 @@ public sealed class TaskRequestForm : Form
 
         _titleLabel.Text = payload.Title ?? payload.TaskType;
         _descriptionBox.Text = payload.Description ?? "";
+        _descriptionBox.BackColor = UiTheme.Background;
+
+        UiTheme.StylePrimaryButton(_acceptButton);
+        UiTheme.StyleSecondaryButton(_rejectButton);
 
         Controls.Add(_titleLabel);
         Controls.Add(_descriptionBox);

@@ -33,7 +33,7 @@ public sealed class MeetingsForm : Form
         RowHeadersVisible = false, AllowUserToResizeRows = false,
     };
 
-    private readonly Label _guideLabel = new() { Left = 20, Top = 434, Width = 460, Height = 20, ForeColor = Color.Gray };
+    private readonly Label _guideLabel = new() { Left = 20, Top = 434, Width = 460, Height = 20 };
     private readonly Button _closeButton = new() { Left = 498, Top = 432, Width = 100, Text = "닫기" };
 
     public MeetingsForm(WorkSupportApiClient api)
@@ -42,6 +42,7 @@ public sealed class MeetingsForm : Form
 
         Text = "협의사항";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -50,6 +51,12 @@ public sealed class MeetingsForm : Form
 
         _sourceBox.Items.AddRange(new object[] { "협의안건 전달사항", "협의안건 전달내용 보관" });
         _sourceBox.SelectedIndex = 0;
+
+        UiTheme.StyleGrid(_grid);
+        UiTheme.StyleHintLabel(_guideLabel);
+        UiTheme.StylePrimaryButton(_registerButton);
+        UiTheme.StyleSecondaryButton(_viewSheetButton);
+        UiTheme.StyleSecondaryButton(_closeButton);
 
         Controls.Add(_sourceBox);
         Controls.Add(_registerButton);

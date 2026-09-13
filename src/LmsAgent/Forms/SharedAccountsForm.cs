@@ -36,6 +36,7 @@ public sealed class SharedAccountsForm : Form
 
         Text = "공통 계정 정보";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -43,9 +44,14 @@ public sealed class SharedAccountsForm : Form
         ClientSize = new Size(600, 440);
 
         BuildColumns();
+        UiTheme.StyleGrid(_grid);
+        UiTheme.StyleGridButtonColumn(_viewColumn, primary: true);
+        UiTheme.StyleGridButtonColumn(_openColumn);
 
         Controls.Add(_grid);
         Controls.Add(_closeButton);
+
+        UiTheme.StyleSecondaryButton(_closeButton);
 
         _closeButton.Click += (_, _) => Close();
         _grid.CellContentClick += OnCellContentClick;

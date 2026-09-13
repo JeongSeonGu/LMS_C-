@@ -22,7 +22,7 @@ public sealed class GuideDocsForm : Form
 
     private readonly Label _selectedLabel = new()
     {
-        Left = 336, Top = 20, Width = 260, Height = 60, Font = new Font("맑은 고딕", 10F, FontStyle.Bold),
+        Left = 336, Top = 20, Width = 260, Height = 60,
     };
 
     private readonly Button _downloadButton = new() { Left = 336, Top = 90, Width = 110, Text = "다운로드...", Enabled = false };
@@ -37,11 +37,18 @@ public sealed class GuideDocsForm : Form
 
         Text = "길라잡이 조회";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(616, 440);
+
+        UiTheme.StyleTree(_tree);
+        UiTheme.StyleSubHeaderLabel(_selectedLabel);
+        UiTheme.StylePrimaryButton(_downloadButton);
+        UiTheme.StyleSecondaryButton(_openButton);
+        UiTheme.StyleSecondaryButton(_closeButton);
 
         Controls.Add(_tree);
         Controls.Add(_selectedLabel);

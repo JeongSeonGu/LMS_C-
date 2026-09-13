@@ -53,7 +53,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         _session.SessionChanged += OnSessionChanged;
 
-        var menu = new ContextMenuStrip();
+        var menu = new ContextMenuStrip { Renderer = UiTheme.CreateMenuRenderer(), Font = UiTheme.BaseFont };
 
         _connectionStatusItem = new ToolStripMenuItem("연결 상태: 연결 중...") { Enabled = false };
         menu.Items.Add(_connectionStatusItem);

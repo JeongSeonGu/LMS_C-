@@ -42,6 +42,7 @@ public sealed class RequestsForm : Form
 
         Text = "요청사항";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -52,6 +53,12 @@ public sealed class RequestsForm : Form
         _scopeBox.SelectedIndex = 0;
 
         BuildColumns();
+        UiTheme.StyleGrid(_grid);
+        UiTheme.StylePrimaryButton(_addButton);
+        UiTheme.StyleSecondaryButton(_editButton);
+        UiTheme.StyleDangerButton(_deleteButton);
+        UiTheme.StyleSecondaryButton(_refreshButton);
+        UiTheme.StyleSecondaryButton(_closeButton);
 
         Controls.Add(_scopeBox);
         Controls.Add(_addButton);

@@ -1,7 +1,7 @@
-using System.Drawing;
 using System.Drawing.Printing;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms.OptionsPages;
 
@@ -27,23 +27,25 @@ public sealed class PrintOptionsPage : UserControl, IOptionsPage
     public PrintOptionsPage()
     {
         Dock = DockStyle.Fill;
+        BackColor = UiTheme.Surface;
+        Font = UiTheme.BaseFont;
 
-        Controls.Add(new Label
-        {
-            Left = 16, Top = 0, Width = 400, Height = 20,
-            Text = "출력",
-            Font = new Font(Font, FontStyle.Bold),
-        });
+        var header = new Label { Left = 16, Top = 0, Width = 400, Height = 24, Text = "출력" };
+        UiTheme.StyleHeaderLabel(header);
+        Controls.Add(header);
+
         Controls.Add(new Label { Left = 20, Top = 23, Width = 100, Text = "프린터" });
         Controls.Add(_printerBox);
         Controls.Add(_autoPrintBox);
-        Controls.Add(new Label
+
+        var hint = new Label
         {
             Left = 20, Top = 85, Width = 380, Height = 40,
-            ForeColor = Color.Gray,
             Text = "체크 시 평일 08:30~10:00 사이 프로그램을 처음 실행할 때 선택한 프린터로\n" +
                    "그날 나의 학사 업무 일정을 자동으로 출력합니다.",
-        });
+        };
+        UiTheme.StyleHintLabel(hint);
+        Controls.Add(hint);
 
         foreach (var printer in PrinterSettings.InstalledPrinters)
         {

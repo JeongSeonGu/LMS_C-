@@ -44,7 +44,7 @@ public sealed class RequestEditForm : Form
 
     private readonly Label _statusLabel = new()
     {
-        Left = 20, Top = 358, Width = 370, Height = 30, ForeColor = Color.Firebrick,
+        Left = 20, Top = 358, Width = 370, Height = 30, ForeColor = UiTheme.Danger,
     };
 
     public RequestEditForm(WorkSupportApiClient api, RequestMeta meta, RequestDetail? editing = null)
@@ -54,6 +54,7 @@ public sealed class RequestEditForm : Form
 
         Text = editing is null ? "요청사항 등록" : "요청사항 수정";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -111,6 +112,9 @@ public sealed class RequestEditForm : Form
 
         _hasDueBox.CheckedChanged += (_, _) => _dueDatePicker.Enabled = _hasDueBox.Checked;
 
+        UiTheme.StylePrimaryButton(_saveButton);
+        UiTheme.StyleSecondaryButton(_cancelButton);
+
         _saveButton.Click += OnSaveClicked;
         _cancelButton.Click += (_, _) => Close();
     }
@@ -142,7 +146,7 @@ public sealed class RequestEditForm : Form
         var dueDate = _hasDueBox.Checked ? _dueDatePicker.Value.ToString("yyyy-MM-dd") : null;
 
         _saveButton.Enabled = false;
-        _statusLabel.ForeColor = Color.Firebrick;
+        _statusLabel.ForeColor = UiTheme.Danger;
         _statusLabel.Text = _editing is null ? "등록 중..." : "수정 중...";
 
         try

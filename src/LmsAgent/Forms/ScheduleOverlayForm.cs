@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Interop;
 using LmsAgent.Models.WorkSupport;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
 
@@ -129,11 +130,11 @@ public sealed class ScheduleOverlayForm : Form
             var day = _periodStart.AddDays(i);
             var x = i * columnWidth;
 
-            using var separator = new Pen(Color.FromArgb(60, 255, 255, 255));
+            using var separator = new Pen(Color.FromArgb(60, UiTheme.Sky));
             g.DrawLine(separator, x, top, x, Height - 8);
 
             var isToday = day.Date == DateTime.Today;
-            using var dayBrush = new SolidBrush(isToday ? Color.Gold : Color.White);
+            using var dayBrush = new SolidBrush(isToday ? UiTheme.Orange : Color.White);
             g.DrawString($"{day:MM/dd (ddd)}", dayFont, dayBrush, x + 6, top + 2);
 
             var dayEvents = _events
@@ -168,9 +169,10 @@ public sealed class ScheduleOverlayForm : Form
         var columnWidth = (float)Width / 7;
 
         string[] weekdayNames = { "월", "화", "수", "목", "금", "토", "일" };
+        using var weekdayBrush = new SolidBrush(UiTheme.SkyLight);
         for (var i = 0; i < 7; i++)
         {
-            g.DrawString(weekdayNames[i], weekdayFont, Brushes.LightGray, i * columnWidth + 8, gridTop - 26);
+            g.DrawString(weekdayNames[i], weekdayFont, weekdayBrush, i * columnWidth + 8, gridTop - 26);
         }
 
         var firstOfMonth = new DateTime(_periodStart.Year, _periodStart.Month, 1);
@@ -180,7 +182,7 @@ public sealed class ScheduleOverlayForm : Form
         var rows = (int)Math.Ceiling(totalCells / 7.0);
         var rowHeight = gridHeight / Math.Max(rows, 1);
 
-        using var gridPen = new Pen(Color.FromArgb(50, 255, 255, 255));
+        using var gridPen = new Pen(Color.FromArgb(50, UiTheme.Sky));
 
         for (var cell = 0; cell < rows * 7; cell++)
         {
@@ -195,7 +197,7 @@ public sealed class ScheduleOverlayForm : Form
             var date = new DateTime(_periodStart.Year, _periodStart.Month, dayNumber);
             var isToday = date.Date == DateTime.Today;
 
-            using var dayBrush = new SolidBrush(isToday ? Color.Gold : Color.White);
+            using var dayBrush = new SolidBrush(isToday ? UiTheme.Orange : Color.White);
             g.DrawString(dayNumber.ToString(), dayFont, dayBrush, cellRect.X + 6, cellRect.Y + 4);
 
             var dayEvents = _events

@@ -34,7 +34,7 @@ public sealed class UserInfoForm : Form
         Top = 260,
         Width = 320,
         Height = 40,
-        ForeColor = Color.Firebrick,
+        ForeColor = UiTheme.Danger,
     };
 
     public UserInfoForm(WorkSupportApiClient api, SessionManager session)
@@ -44,6 +44,7 @@ public sealed class UserInfoForm : Form
 
         Text = "사용자 정보 수정";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -57,7 +58,7 @@ public sealed class UserInfoForm : Form
         Controls.Add(new Label { Left = 20, Top = 133, Width = 90, Text = "연락처" });
         Controls.Add(new Label { Left = 20, Top = 163, Width = 90, Text = "현재 비밀번호" });
         Controls.Add(new Label { Left = 20, Top = 193, Width = 90, Text = "새 비밀번호" });
-        Controls.Add(new Label { Left = 20, Top = 210, Width = 320, Text = "(변경하지 않으려면 비워두세요)", ForeColor = Color.Gray });
+        Controls.Add(new Label { Left = 20, Top = 210, Width = 320, Text = "(변경하지 않으려면 비워두세요)", ForeColor = UiTheme.TextSecondary });
 
         Controls.Add(_nameValueLabel);
         Controls.Add(_positionValueLabel);
@@ -70,6 +71,9 @@ public sealed class UserInfoForm : Form
         Controls.Add(_closeButton);
         Controls.Add(_statusLabel);
 
+        UiTheme.StylePrimaryButton(_saveButton);
+        UiTheme.StyleSecondaryButton(_closeButton);
+
         _saveButton.Click += OnSaveClicked;
         _closeButton.Click += (_, _) => Close();
 
@@ -78,7 +82,7 @@ public sealed class UserInfoForm : Form
 
     private async void OnLoadAsync(object? sender, EventArgs e)
     {
-        _statusLabel.ForeColor = Color.Gray;
+        _statusLabel.ForeColor = UiTheme.TextSecondary;
         _statusLabel.Text = "정보를 불러오는 중...";
 
         try
@@ -86,7 +90,7 @@ public sealed class UserInfoForm : Form
             var result = await _api.GetProfileAsync();
             if (!result.Ok || result.Data is null)
             {
-                _statusLabel.ForeColor = Color.Firebrick;
+                _statusLabel.ForeColor = UiTheme.Danger;
                 _statusLabel.Text = result.ErrorMessage is { Length: > 0 } msg ? msg : "정보를 불러오지 못했습니다.";
                 return;
             }
@@ -101,7 +105,7 @@ public sealed class UserInfoForm : Form
         }
         catch (Exception ex)
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = $"오류: {ex.Message}";
         }
     }
@@ -115,20 +119,20 @@ public sealed class UserInfoForm : Form
 
         if (string.IsNullOrEmpty(loginId))
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "아이디를 입력하세요.";
             return;
         }
 
         if (string.IsNullOrEmpty(currentPw))
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "현재 비밀번호를 입력하세요.";
             return;
         }
 
         _saveButton.Enabled = false;
-        _statusLabel.ForeColor = Color.Firebrick;
+        _statusLabel.ForeColor = UiTheme.Danger;
         _statusLabel.Text = "저장 중...";
 
         try
@@ -147,7 +151,7 @@ public sealed class UserInfoForm : Form
             }
             else
             {
-                _statusLabel.ForeColor = Color.Firebrick;
+                _statusLabel.ForeColor = UiTheme.Danger;
                 _statusLabel.Text = string.IsNullOrWhiteSpace(result.ErrorMessage)
                     ? "저장에 실패했습니다."
                     : result.ErrorMessage;
@@ -155,7 +159,7 @@ public sealed class UserInfoForm : Form
         }
         catch (Exception ex)
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = $"오류: {ex.Message}";
         }
         finally

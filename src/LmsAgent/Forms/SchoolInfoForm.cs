@@ -24,9 +24,10 @@ public sealed class SchoolInfoForm : Form
     private readonly Label _nameLabel = new()
     {
         Left = 96, Top = 20, Width = 380, Height = 26, Font = new Font("맑은 고딕", 14F, FontStyle.Bold),
+        ForeColor = UiTheme.SkyDark,
     };
 
-    private readonly Label _badgeLabel = new() { Left = 96, Top = 50, Width = 380, Height = 20, ForeColor = Color.Gray };
+    private readonly Label _badgeLabel = new() { Left = 96, Top = 50, Width = 380, Height = 20 };
 
     private readonly DataGridView _studentGrid = new()
     {
@@ -49,6 +50,7 @@ public sealed class SchoolInfoForm : Form
 
         Text = "학교 기본정보";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -56,6 +58,8 @@ public sealed class SchoolInfoForm : Form
         ClientSize = new Size(616, 370);
 
         BuildStudentGridColumns();
+        UiTheme.StyleGrid(_studentGrid);
+        UiTheme.StyleHintLabel(_badgeLabel);
 
         Controls.Add(_logoBox);
         Controls.Add(_nameLabel);
@@ -63,6 +67,8 @@ public sealed class SchoolInfoForm : Form
         Controls.Add(_studentGrid);
         Controls.Add(_infoLabel);
         Controls.Add(_closeButton);
+
+        UiTheme.StyleSecondaryButton(_closeButton);
 
         _closeButton.Click += (_, _) => Close();
 

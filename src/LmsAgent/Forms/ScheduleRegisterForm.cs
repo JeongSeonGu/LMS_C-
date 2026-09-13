@@ -80,7 +80,7 @@ public sealed class ScheduleRegisterForm : Form
         Top = 346,
         Width = 360,
         Height = 30,
-        ForeColor = Color.Firebrick,
+        ForeColor = UiTheme.Danger,
     };
 
     /// <param name="editing">null이면 신규 등록, 값이 있으면 해당 일정을 수정합니다.</param>
@@ -94,6 +94,7 @@ public sealed class ScheduleRegisterForm : Form
 
         Text = editing is null ? "학사 일정 등록" : "학사 일정 수정";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -156,6 +157,9 @@ public sealed class ScheduleRegisterForm : Form
         _allDayBox.CheckedChanged += (_, _) => ApplyAllDayVisibility();
         _startDatePicker.ValueChanged += (_, _) => OnStartChanged();
         _startTimePicker.ValueChanged += (_, _) => OnStartChanged();
+
+        UiTheme.StylePrimaryButton(_saveButton);
+        UiTheme.StyleSecondaryButton(_cancelButton);
 
         _saveButton.Click += OnSaveClicked;
         _cancelButton.Click += (_, _) => Close();
@@ -241,7 +245,7 @@ public sealed class ScheduleRegisterForm : Form
         var title = _titleBox.Text.Trim();
         if (string.IsNullOrEmpty(title))
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "제목을 입력하세요.";
             return;
         }
@@ -250,14 +254,14 @@ public sealed class ScheduleRegisterForm : Form
 
         if (!_session.CanUseDept(selectedDeptId))
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "본인의 담당업무로만 등록/수정할 수 있습니다.";
             return;
         }
 
         if (_editing is not null && !_session.CanUseDept(_editing.DeptId))
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "이 일정은 본인의 담당업무와 관련이 없어 수정할 수 없습니다.";
             return;
         }
@@ -268,13 +272,13 @@ public sealed class ScheduleRegisterForm : Form
 
         if (end < start)
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "종료 일시가 시작 일시보다 빠를 수 없습니다.";
             return;
         }
 
         _saveButton.Enabled = false;
-        _statusLabel.ForeColor = Color.Firebrick;
+        _statusLabel.ForeColor = UiTheme.Danger;
         _statusLabel.Text = _editing is null ? "등록 중..." : "수정 중...";
 
         try
@@ -298,14 +302,14 @@ public sealed class ScheduleRegisterForm : Form
 
             if (result.Ok)
             {
-                _statusLabel.ForeColor = Color.SeaGreen;
+                _statusLabel.ForeColor = UiTheme.Success;
                 _statusLabel.Text = _editing is null ? "등록되었습니다." : "수정되었습니다.";
                 DialogResult = DialogResult.OK;
                 Close();
             }
             else
             {
-                _statusLabel.ForeColor = Color.Firebrick;
+                _statusLabel.ForeColor = UiTheme.Danger;
                 _statusLabel.Text = string.IsNullOrWhiteSpace(result.ErrorMessage)
                     ? "처리에 실패했습니다."
                     : result.ErrorMessage;
@@ -313,7 +317,7 @@ public sealed class ScheduleRegisterForm : Form
         }
         catch (Exception ex)
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = $"오류: {ex.Message}";
         }
         finally

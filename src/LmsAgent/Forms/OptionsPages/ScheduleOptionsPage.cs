@@ -39,13 +39,13 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
     public ScheduleOptionsPage()
     {
         Dock = DockStyle.Fill;
+        BackColor = UiTheme.Surface;
+        Font = UiTheme.BaseFont;
 
-        Controls.Add(new Label
-        {
-            Left = 16, Top = 0, Width = 400, Height = 20,
-            Text = "학사일정",
-            Font = new Font(Font, FontStyle.Bold),
-        });
+        var header = new Label { Left = 16, Top = 0, Width = 400, Height = 24, Text = "학사일정" };
+        UiTheme.StyleHeaderLabel(header);
+        Controls.Add(header);
+
         Controls.Add(new Label { Left = 20, Top = 23, Width = 100, Text = "출력 모니터" });
         Controls.Add(_monitorBox);
         Controls.Add(new Label { Left = 20, Top = 58, Width = 100, Text = "출력 단위" });
@@ -55,13 +55,15 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         Controls.Add(new Label { Left = 20, Top = 122, Width = 100, Text = "투명도" });
         Controls.Add(_opacityTrack);
         Controls.Add(_opacityValueLabel);
-        Controls.Add(new Label
+
+        var hint = new Label
         {
             Left = 20, Top = 152, Width = 380, Height = 55,
-            ForeColor = Color.Gray,
             Text = "주 단위: 선택한 모니터 하단에 이번 주 학사달력을 표시합니다.\n" +
                    "월 단위: 선택한 모니터 화면 전체를 이번 달 학사달력으로 채웁니다.",
-        });
+        };
+        UiTheme.StyleHintLabel(hint);
+        Controls.Add(hint);
 
         foreach (var option in DisplayHelper.GetMonitorOptions())
         {

@@ -28,9 +28,9 @@ public sealed class LoginForm : Form
         Multiline = true,
         ReadOnly = true,
         BorderStyle = BorderStyle.None,
-        BackColor = SystemColors.Control,
+        BackColor = UiTheme.Background,
         ScrollBars = ScrollBars.Vertical,
-        ForeColor = Color.Firebrick,
+        ForeColor = UiTheme.Danger,
         TabStop = false,
     };
 
@@ -45,6 +45,7 @@ public sealed class LoginForm : Form
 
         Text = "사용자 로그인";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -69,6 +70,9 @@ public sealed class LoginForm : Form
         AcceptButton = _loginButton;
         CancelButton = _cancelButton;
 
+        UiTheme.StylePrimaryButton(_loginButton);
+        UiTheme.StyleSecondaryButton(_cancelButton);
+
         _loginButton.Click += OnLoginClicked;
         _cancelButton.Click += (_, _) => Close();
     }
@@ -80,13 +84,13 @@ public sealed class LoginForm : Form
 
         if (string.IsNullOrEmpty(loginId) || string.IsNullOrEmpty(password))
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = "아이디와 비밀번호를 입력하세요.";
             return;
         }
 
         _loginButton.Enabled = false;
-        _statusLabel.ForeColor = Color.Firebrick;
+        _statusLabel.ForeColor = UiTheme.Danger;
         _statusLabel.Text = "로그인 중...";
 
         try
@@ -95,7 +99,7 @@ public sealed class LoginForm : Form
 
             if (!result.Ok || result.Data?.User is null)
             {
-                _statusLabel.ForeColor = Color.Firebrick;
+                _statusLabel.ForeColor = UiTheme.Danger;
                 _statusLabel.Text = string.IsNullOrWhiteSpace(result.ErrorMessage)
                     ? "로그인에 실패했습니다."
                     : result.ErrorMessage;
@@ -104,7 +108,7 @@ public sealed class LoginForm : Form
 
             _session.SetSession(result.Data.User);
 
-            _statusLabel.ForeColor = Color.SeaGreen;
+            _statusLabel.ForeColor = UiTheme.Success;
             _statusLabel.Text = "담당업무 정보를 불러오는 중...";
 
             await _session.RefreshDepartmentContextAsync(_api);
@@ -115,7 +119,7 @@ public sealed class LoginForm : Form
         }
         catch (Exception ex)
         {
-            _statusLabel.ForeColor = Color.Firebrick;
+            _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = $"로그인 오류: {ex.Message}";
         }
         finally

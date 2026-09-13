@@ -33,13 +33,13 @@ public sealed class DutyOptionsPage : UserControl, IOptionsPage
     public DutyOptionsPage()
     {
         Dock = DockStyle.Fill;
+        BackColor = UiTheme.Surface;
+        Font = UiTheme.BaseFont;
 
-        Controls.Add(new Label
-        {
-            Left = 16, Top = 0, Width = 400, Height = 20,
-            Text = "복무",
-            Font = new Font(Font, FontStyle.Bold),
-        });
+        var header = new Label { Left = 16, Top = 0, Width = 400, Height = 24, Text = "복무" };
+        UiTheme.StyleHeaderLabel(header);
+        Controls.Add(header);
+
         Controls.Add(new Label { Left = 20, Top = 23, Width = 100, Text = "출력 모니터" });
         Controls.Add(_monitorBox);
         Controls.Add(new Label { Left = 20, Top = 58, Width = 100, Text = "알림 대상" });
@@ -48,13 +48,15 @@ public sealed class DutyOptionsPage : UserControl, IOptionsPage
         Controls.Add(new Label { Left = 20, Top = 119, Width = 100, Text = "투명도" });
         Controls.Add(_opacityTrack);
         Controls.Add(_opacityValueLabel);
-        Controls.Add(new Label
+
+        var hint = new Label
         {
             Left = 20, Top = 149, Width = 380, Height = 55,
-            ForeColor = Color.Gray,
             Text = "체크한 대상에게 출장·연가가 있으면 하루 전엔 우측 상단에 예정 안내를,\n" +
                    "당일에는 부재중 안내를 화면 최상단에 고정 표시합니다.",
-        });
+        };
+        UiTheme.StyleHintLabel(hint);
+        Controls.Add(hint);
 
         foreach (var option in DisplayHelper.GetMonitorOptions())
         {

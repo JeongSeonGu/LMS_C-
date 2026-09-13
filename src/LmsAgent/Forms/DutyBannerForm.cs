@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using LmsAgent.Interop;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
 
@@ -27,7 +28,7 @@ public sealed class DutyBannerForm : Form
         ShowInTaskbar = false;
         TopMost = true;
         Size = new Size(340, 64);
-        BackColor = Color.FromArgb(0, 90, 158);
+        BackColor = UiTheme.SkyDark;
         Controls.Add(_label);
     }
 
@@ -47,7 +48,7 @@ public sealed class DutyBannerForm : Form
     public void UpdateContent(string text, bool urgent)
     {
         _label.Text = text;
-        BackColor = urgent ? Color.FromArgb(198, 40, 40) : Color.FromArgb(0, 90, 158);
+        BackColor = urgent ? UiTheme.Danger : UiTheme.SkyDark;
     }
 
     public void PositionTopRight(Screen screen)

@@ -30,11 +30,15 @@ public sealed class StartupSummaryForm : Form
 
         Text = "오늘의 알림";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(492, 536);
+
+        _content.BackColor = UiTheme.Background;
+        UiTheme.StyleSecondaryButton(_closeButton);
 
         Controls.Add(_content);
         Controls.Add(_closeButton);
@@ -54,6 +58,9 @@ public sealed class StartupSummaryForm : Form
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Margin = new Padding(0, 0, 0, 8),
+            ForeColor = UiTheme.SkyDark,
+            Font = UiTheme.BoldFont,
+            BackColor = UiTheme.Surface,
         };
 
         var label = new Label
@@ -63,6 +70,8 @@ public sealed class StartupSummaryForm : Form
             Left = 10,
             Top = 20,
             Text = text,
+            Font = UiTheme.BaseFont,
+            ForeColor = UiTheme.TextPrimary,
         };
 
         group.Controls.Add(label);

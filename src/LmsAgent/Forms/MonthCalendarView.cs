@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 using LmsAgent.Models.WorkSupport;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
 
@@ -33,6 +34,7 @@ public sealed class MonthCalendarView : UserControl
     {
         DoubleBuffered = true;
         BackColor = Color.White;
+        BorderStyle = BorderStyle.FixedSingle;
         SetStyle(ControlStyles.ResizeRedraw, true);
     }
 
@@ -76,9 +78,15 @@ public sealed class MonthCalendarView : UserControl
         using var headerFont = new Font("맑은 고딕", 9F, FontStyle.Bold);
         using var dayFont = new Font("맑은 고딕", 9F);
         using var eventFont = new Font("맑은 고딕", 8F);
-        using var gridPen = new Pen(Color.FromArgb(224, 224, 224));
-        using var weekendBrush = new SolidBrush(Color.Firebrick);
-        using var weekdayBrush = new SolidBrush(Color.Black);
+        using var gridPen = new Pen(UiTheme.Border);
+        using var weekendBrush = new SolidBrush(UiTheme.Danger);
+        using var weekdayBrush = new SolidBrush(UiTheme.SkyDark);
+
+        // 헤더 띠(하늘색)로 요일 행을 구분한다.
+        using (var headerBandBrush = new SolidBrush(UiTheme.SkyLight))
+        {
+            g.FillRectangle(headerBandBrush, 0, 0, Width, HeaderHeight);
+        }
 
         var colWidth = (float)Width / 7;
 
@@ -113,13 +121,14 @@ public sealed class MonthCalendarView : UserControl
             var isToday = date == DateTime.Today;
             if (isToday)
             {
-                using var todayBrush = new SolidBrush(Color.FromArgb(26, 115, 232));
+                using var todayBrush = new SolidBrush(UiTheme.Orange);
                 g.FillEllipse(todayBrush, cellRect.X + 3, cellRect.Y + 2, 18, 18);
                 g.DrawString(dayNumber.ToString(), dayFont, Brushes.White, cellRect.X + 7, cellRect.Y + 3);
             }
             else
             {
-                g.DrawString(dayNumber.ToString(), dayFont, Brushes.Black, cellRect.X + 4, cellRect.Y + 2);
+                using var dayBrush = new SolidBrush(UiTheme.TextPrimary);
+                g.DrawString(dayNumber.ToString(), dayFont, dayBrush, cellRect.X + 4, cellRect.Y + 2);
             }
 
             var dayEvents = _events

@@ -43,6 +43,7 @@ public sealed class OptionsForm : Form
 
         Text = "환경설정";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -77,6 +78,12 @@ public sealed class OptionsForm : Form
 
         AcceptButton = _okButton;
         CancelButton = _cancelButton;
+
+        UiTheme.StyleTree(_tree);
+        _pageHost.BackColor = UiTheme.Surface;
+        UiTheme.StylePrimaryButton(_okButton);
+        UiTheme.StyleSecondaryButton(_applyButton);
+        UiTheme.StyleSecondaryButton(_cancelButton);
 
         _tree.AfterSelect += (_, e) => ShowPage(e.Node?.Tag as IOptionsPage);
         _okButton.Click += (_, _) =>

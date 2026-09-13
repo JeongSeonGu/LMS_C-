@@ -48,6 +48,7 @@ src/LmsAgent/
     DisplayHelper.cs             다중 모니터 열거
     ColorHelper.cs                "#rrggbb" 문자열 → Color 안전 변환
     AppIconProvider.cs           임베디드 아이콘 로드
+    UiTheme.cs                   화면 전체에 적용하는 하늘색·오렌지색 테마(팔레트·글꼴·버튼/그리드/트리/메뉴 스타일)
   Forms/
     LoginForm.cs / UserInfoForm.cs             로그인 / 개인정보 수정
     ScheduleRegisterForm.cs                    학사 일정 등록·수정(구글 캘린더 스타일 종일/시간 입력)
@@ -220,6 +221,59 @@ src/LmsAgent/
 `node2.future-class.kr` 웹소켓 서버는 WorkSupport HTTP API와 별개로, 서버가 클라이언트에게
 작업을 요청하고(`task.request`) 클라이언트가 수락/거절로 응답(`task.response`)하는 실시간
 채널로 계속 사용합니다. 연결이 끊기면 지수 백오프(2초~30초)로 자동 재연결합니다.
+
+## UI 디자인 개편 (하늘색·오렌지 테마)
+
+기본 WinForms 회색조 인터페이스가 사용자 친화적이지 않다는 피드백에 따라, 밝은 하늘색과
+오렌지색 계열을 중심으로 전체 화면을 다시 스타일링했습니다. 레이아웃(컨트롤 위치·크기)은
+바꾸지 않고 색상·글꼴·버튼/그리드/트리/메뉴의 그리기 방식만 손봐서, 기존 화면 구성과
+동작은 그대로 유지하면서 현대적인 느낌을 내도록 했습니다.
+
+### 팔레트 (`Services/UiTheme.cs`)
+
+| 용도 | 색상 |
+|---|---|
+| 주 색상(하늘색) | `Sky` `#29ABE2`, 강조 시 `SkyDark` `#0F85BA`, 옅은 배경 `SkyLight`/`SkyPale` |
+| 포인트 색상(오렌지) | `Orange` `#FF8D3C`, 강조 시 `OrangeDark` `#E86F1A`, 옅은 배경 `OrangeLight` |
+| 배경/표면 | 창 배경 `SkyPale`(옅은 하늘색), 카드/입력 영역 `White` |
+| 텍스트 | 기본 `TextPrimary`(짙은 남회색), 보조 설명 `TextSecondary`(회색조) |
+| 상태 | 성공 `Success`(녹색), 위험/오류 `Danger`(붉은 오렌지) |
+| 글꼴 | 본문 "맑은 고딕" 9.5pt, 제목 13pt(굵게), 소제목 10pt(굵게) |
+
+`UiTheme`는 위 팔레트를 바탕으로 아래와 같은 재사용 가능한 스타일 함수를 제공하고,
+모든 창과 사용자 컨트롤이 생성자에서 이 함수들을 호출해 스타일을 적용합니다.
+
+- `ApplyForm` — 창 배경색·기본 글꼴 지정
+- `StylePrimaryButton`/`StyleSecondaryButton`/`StyleDangerButton`/`StyleFlatToolButton` —
+  오렌지색 강조 버튼(등록/저장 등 주요 동작), 하늘색 테두리의 보조 버튼(취소/닫기 등),
+  삭제류의 위험 버튼, 테두리만 있는 툴바형 버튼(달력 이전/오늘/다음 등)을 각각 평평한
+  플랫 스타일로 그립니다.
+- `StyleHeaderLabel`/`StyleSubHeaderLabel`/`StyleHintLabel` — 제목·소제목·보조 설명용 라벨 색상/글꼴
+- `StyleGrid`/`StyleGridButtonColumn` — `DataGridView`의 헤더를 하늘색 배경/흰 글자로,
+  선택 행은 옅은 오렌지색으로, 홀짝 행은 옅은 하늘색으로 표시
+- `StyleTree` — `TreeView`(길라잡이 문서함 트리 등)를 오너 드로우로 다시 그려 선택 항목을
+  오렌지색으로 표시(윈도우 기본 파란색 선택 대신)
+- `CreateMenuRenderer` — 트레이 아이콘 우클릭 메뉴에 적용하는 `ToolStripProfessionalRenderer`.
+  메뉴 항목에 마우스를 올리면 옅은 오렌지색으로 강조됩니다.
+
+### 적용 범위
+
+- **로그인/사용자정보/학사일정 등록·목록·상세** 창 전체
+- **환경설정(Options) 창**과 대분류(일반/학사일정/복무/출력/네트워크) 5개 페이지 전체
+- **기본정보** 5종 화면(요청사항 목록/등록, 학교기본정보, 공통계정, 협의사항, 길라잡이 조회)
+- **트레이 아이콘 우클릭 메뉴** 전체(하늘색·오렌지 강조 렌더러 적용)
+- **배경화면형 학사달력 오버레이**와 **복무 알림 배너**는 바탕화면 위에 항상 떠 있는
+  화면이라 어두운 배경에 흰 글자를 유지해 가독성을 지키되, "오늘" 강조색과 배너 색상을
+  테마의 하늘색(`SkyDark`)·오렌지(`Orange`)·위험색(`Danger`)으로 맞췄습니다.
+
+### 알려진 제약
+
+일부 요소는 윈도우 표준 컨트롤을 그대로 사용해서 이번 테마로는 색을 바꿀 수 없습니다.
+
+- `CheckBox`/`RadioButton`의 체크·라디오 표시(글리프)는 운영체제 기본 모양 그대로입니다.
+- `ComboBox`의 드롭다운 목록, `DateTimePicker`의 달력 팝업은 운영체제 기본 렌더링을 따릅니다.
+- `MessageBox`, `SaveFileDialog` 등 시스템 공용 대화상자는 윈도우 테마를 따르며 앱에서
+  색을 바꿀 수 없습니다.
 
 ## 아이콘
 

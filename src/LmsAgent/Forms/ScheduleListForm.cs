@@ -43,6 +43,7 @@ public sealed class ScheduleListForm : Form
 
         Text = "학사 일정 목록";
         Icon = AppIconProvider.Icon;
+        UiTheme.ApplyForm(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -56,6 +57,14 @@ public sealed class ScheduleListForm : Form
         Controls.Add(_addButton);
         Controls.Add(_calendar);
         Controls.Add(_closeButton);
+
+        UiTheme.StyleFlatToolButton(_prevMonthButton);
+        UiTheme.StyleFlatToolButton(_todayButton);
+        UiTheme.StyleFlatToolButton(_nextMonthButton);
+        UiTheme.StylePrimaryButton(_addButton);
+        UiTheme.StyleSecondaryButton(_closeButton);
+        UiTheme.StyleSubHeaderLabel(_monthLabel);
+        _monthLabel.ForeColor = UiTheme.SkyDark;
 
         _prevMonthButton.Click += (_, _) => ChangeMonth(-1);
         _nextMonthButton.Click += (_, _) => ChangeMonth(1);
