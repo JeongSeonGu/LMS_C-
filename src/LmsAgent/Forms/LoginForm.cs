@@ -1,7 +1,6 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using LmsAgent.Models;
 using LmsAgent.Networking;
 using LmsAgent.Services;
 
@@ -10,7 +9,7 @@ namespace LmsAgent.Forms;
 /// <summary>사용자 정보 &gt; 사용자 로그인 메뉴에서 열리는 로그인 창입니다.</summary>
 public sealed class LoginForm : Form
 {
-    private readonly WebSocketClientService _client;
+    private readonly WorkSupportApiClient _api;
     private readonly SessionManager _session;
 
     private readonly TextBox _idBox = new() { Left = 110, Top = 20, Width = 200 };
@@ -32,12 +31,13 @@ public sealed class LoginForm : Form
 
     public string LoginId => _idBox.Text.Trim();
 
-    public LoginForm(WebSocketClientService client, SessionManager session, string? savedLoginId)
+    public LoginForm(WorkSupportApiClient api, SessionManager session, string? savedLoginId)
     {
-        _client = client;
+        _api = api;
         _session = session;
 
         Text = "사용자 로그인";
+        Icon = AppIconProvider.Icon;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -84,28 +84,27 @@ public sealed class LoginForm : Form
 
         try
         {
-            var request = WsEnvelope.Create(MessageTypes.AuthLogin, new LoginRequest
-            {
-                LoginId = loginId,
-                Password = password,
-            });
+            var result = await _api.LoginAsync(loginId, password);
 
-            var response = await _client.SendRequestAsync(request);
-            var result = response.GetPayload<LoginResponse>();
-
-            if (result is { Success: true } && result.Profile is not null && result.Token is not null)
-            {
-                _session.SetSession(result.Token, result.Profile);
-                _statusLabel.ForeColor = Color.SeaGreen;
-                _statusLabel.Text = "로그인 성공";
-                DialogResult = DialogResult.OK;
-                Close();
-            }
-            else
+            if (!result.Ok || result.Data?.User is null)
             {
                 _statusLabel.ForeColor = Color.Firebrick;
-                _statusLabel.Text = result?.Message ?? "로그인에 실패했습니다.";
+                _statusLabel.Text = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "로그인에 실패했습니다."
+                    : result.ErrorMessage;
+                return;
             }
+
+            _session.SetSession(result.Data.User);
+
+            _statusLabel.ForeColor = Color.SeaGreen;
+            _statusLabel.Text = "담당업무 정보를 불러오는 중...";
+
+            await _session.RefreshDepartmentContextAsync(_api);
+
+            _statusLabel.Text = "로그인 성공";
+            DialogResult = DialogResult.OK;
+            Close();
         }
         catch (Exception ex)
         {

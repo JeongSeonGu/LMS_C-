@@ -12,9 +12,17 @@
     <FileVersion>1.0.0.0</FileVersion>
     <Version>1.0.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Resources\AppIcon.ico</ApplicationIcon>
     <StartupObject>LmsAgent.Program</StartupObject>
     <LangVersion>latest</LangVersion>
     <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\AppIcon.ico" />
+    <EmbeddedResource Include="Resources\AppIcon.ico">
+      <LogicalName>AppIcon.ico</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 
 </Project>

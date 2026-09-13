@@ -1,0 +1,275 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using LmsAgent.Models.WorkSupport;
+
+namespace LmsAgent.Networking;
+
+/// <summary>
+/// WorkSupport(교무업무 지원) PHP 웹 서비스의 HTTP API 클라이언트.
+///
+/// 서버는 순수 세션 쿠키(WSSESSID) 기반 인증을 사용하므로(JWT 아님),
+/// 로그인 이후 발급되는 쿠키를 <see cref="CookieContainer"/>로 계속 유지해서
+/// 이후 모든 요청에 자동으로 실어 보낸다.
+///
+/// 기준 경로는 서버의 WS_COOKIE_PATH 상수와 동일한 "/SchoolWork/WorkSupport" 이며,
+/// 호스트는 환경설정의 "웹소켓 서버" 주소에서 스킴만 http(s)로 바꿔 그대로 사용한다
+/// (같은 서버가 웹소켓과 웹 서비스를 함께 제공하는 구성을 전제로 한다).
+/// </summary>
+public sealed class WorkSupportApiClient : IDisposable
+{
+    private const string BasePath = "/SchoolWork/WorkSupport";
+
+    private readonly HttpClient _http;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    public Uri BaseUri { get; }
+
+    public WorkSupportApiClient(string serverUrl)
+    {
+        BaseUri = ComputeApiBaseUri(serverUrl);
+
+        var handler = new HttpClientHandler
+        {
+            CookieContainer = new CookieContainer(),
+            UseCookies = true,
+        };
+
+        _http = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(20),
+        };
+    }
+
+    /// <summary>
+    /// "ws://host:port/ws" / "wss://host/ws" 형태의 웹소켓 주소를
+    /// "http://host:port" / "https://host" 형태의 API 기준 주소로 변환한다.
+    /// </summary>
+    public static Uri ComputeApiBaseUri(string serverUrl)
+    {
+        var wsUri = new Uri(serverUrl);
+        var scheme = wsUri.Scheme.Equals("wss", StringComparison.OrdinalIgnoreCase) ? "https" : "http";
+        var builder = new UriBuilder(wsUri) { Scheme = scheme, Path = "", Query = "" };
+
+        // UriBuilder는 스킴 변경 시 기본 포트를 다시 지정해줘야 http/https 표준 포트로 정리된다.
+        if (wsUri.IsDefaultPort)
+        {
+            builder.Port = -1;
+        }
+
+        return new Uri(builder.Uri, BasePath + "/");
+    }
+
+    private Uri Resolve(string relativePath) => new(BaseUri, relativePath);
+
+    /* =========================================================
+     * 인증
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<LoginResultData>> LoginAsync(string loginId, string password)
+    {
+        var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["login_id"] = loginId,
+            ["login_pw"] = password,
+        });
+
+        return await PostFormAsync<LoginResultData>("php/auth/ws_login.php", form).ConfigureAwait(false);
+    }
+
+    public async Task LogoutAsync()
+    {
+        try
+        {
+            using var response = await _http.GetAsync(Resolve("php/auth/ws_logout.php")).ConfigureAwait(false);
+        }
+        catch
+        {
+            // 로그아웃 통신 실패는 클라이언트 쪽 세션 정리를 막지 않는다.
+        }
+    }
+
+    public async Task<ApiEnvelope<MeResult>> GetMeAsync()
+    {
+        return await GetJsonAsync<MeResult>("php/auth/ws_me.php?peek=1").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<ProfileInfo>> GetProfileAsync()
+    {
+        return await GetJsonAsync<ProfileInfo>("php/auth/profile.php?action=get").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<object>> UpdateProfileAsync(
+        string contact, string loginId, string currentPassword, string newPassword)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["action"] = "update",
+            ["contact"] = contact,
+            ["login_id"] = loginId,
+            ["current_pw"] = currentPassword,
+            ["new_pw"] = newPassword,
+        };
+
+        return await PostFormAsync<object>("php/auth/profile.php", new FormUrlEncodedContent(fields))
+            .ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 담당업무 / 교사
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<List<SchoolDepartment>>> GetDepartmentsAsync()
+    {
+        return await GetJsonAsync<List<SchoolDepartment>>(
+            "SchoolCalendar/php/api/departments.php?action=list").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<TeacherSummary>> GetTeacherAsync(int teacherId)
+    {
+        return await GetJsonAsync<TeacherSummary>(
+            $"SchoolCalendar/php/api/teachers.php?action=get&id={teacherId}").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 학사 일정
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<List<SchoolEvent>>> GetEventsAsync(int year, int month)
+    {
+        return await GetJsonAsync<List<SchoolEvent>>(
+            $"SchoolCalendar/php/api/events.php?action=list&year={year}&month={month}").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<EventWriteResult>> AddEventAsync(SchoolEvent ev)
+    {
+        var request = ToWriteRequest("add", ev);
+        return await PostJsonAsync<EventWriteRequest, EventWriteResult>(
+            "SchoolCalendar/php/api/events.php", request).ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<EventWriteResult>> UpdateEventAsync(SchoolEvent ev)
+    {
+        var request = ToWriteRequest("update", ev);
+        return await PostJsonAsync<EventWriteRequest, EventWriteResult>(
+            "SchoolCalendar/php/api/events.php", request).ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<EventWriteResult>> DeleteEventAsync(int id)
+    {
+        var request = new EventDeleteRequest { Action = "delete", Id = id };
+        return await PostJsonAsync<EventDeleteRequest, EventWriteResult>(
+            "SchoolCalendar/php/api/events.php", request).ConfigureAwait(false);
+    }
+
+    private static EventWriteRequest ToWriteRequest(string action, SchoolEvent ev) => new()
+    {
+        Action = action,
+        Id = ev.Id > 0 ? ev.Id : null,
+        Title = ev.Title,
+        Start = ev.Start,
+        End = ev.End,
+        AllDay = ev.AllDay,
+        DeptId = ev.DeptId,
+        Location = ev.Location,
+        Note = ev.Note,
+        NotifyBefore = ev.NotifyBefore,
+        // events.php의 addEvent()는 createdBy가 비어 있으면 미리 초기화되지 않은 $pdo를
+        // 참조하는 서버측 결함이 있어(관리자 계정 fallback 조회), 항상 값을 채워 보낸다.
+        CreatedBy = ev.CreatedBy,
+    };
+
+    /* =========================================================
+     * 복무 (연가/출장/조퇴)
+     * ========================================================= */
+
+    public async Task<ApiEnvelope<List<DutyRecord>>> GetDutyStatusAsync(int year, int month)
+    {
+        return await GetJsonAsync<List<DutyRecord>>(
+            $"SchoolCalendar/php/api/duty_status.php?action=list&year={year}&month={month}").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 공통 HTTP 헬퍼
+     * ========================================================= */
+
+    private async Task<ApiEnvelope<T>> GetJsonAsync<T>(string relativePath)
+    {
+        var json = await _http.GetStringAsync(Resolve(relativePath)).ConfigureAwait(false);
+        return Deserialize<T>(json);
+    }
+
+    private async Task<ApiEnvelope<T>> PostFormAsync<T>(string relativePath, FormUrlEncodedContent content)
+    {
+        using var response = await _http.PostAsync(Resolve(relativePath), content).ConfigureAwait(false);
+        var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return Deserialize<T>(json);
+    }
+
+    private async Task<ApiEnvelope<TRes>> PostJsonAsync<TReq, TRes>(string relativePath, TReq body)
+    {
+        var json = JsonSerializer.Serialize(body);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await _http.PostAsync(Resolve(relativePath), content).ConfigureAwait(false);
+        var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        return Deserialize<TRes>(responseJson);
+    }
+
+    private static ApiEnvelope<T> Deserialize<T>(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<ApiEnvelope<T>>(json, JsonOptions)
+                   ?? new ApiEnvelope<T> { Ok = false, Message = "서버 응답을 해석할 수 없습니다." };
+        }
+        catch (JsonException)
+        {
+            return new ApiEnvelope<T> { Ok = false, Message = "서버 응답 형식이 올바르지 않습니다." };
+        }
+    }
+
+    public void Dispose() => _http.Dispose();
+
+    private sealed class EventWriteRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] public int? Id { get; set; }
+        [JsonPropertyName("title")] public string Title { get; set; } = "";
+        [JsonPropertyName("start")] public string Start { get; set; } = "";
+        [JsonPropertyName("end")] public string End { get; set; } = "";
+        [JsonPropertyName("allDay")] public bool AllDay { get; set; }
+        [JsonPropertyName("deptId")] public int? DeptId { get; set; }
+        [JsonPropertyName("location")] public string? Location { get; set; }
+        [JsonPropertyName("note")] public string? Note { get; set; }
+        [JsonPropertyName("notifyBefore")] public int NotifyBefore { get; set; }
+        [JsonPropertyName("createdBy")] public int? CreatedBy { get; set; }
+    }
+
+    private sealed class EventDeleteRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] public int Id { get; set; }
+    }
+}
+
+public sealed class EventWriteResult
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("uuid")] public string? Uuid { get; set; }
+}
+
+/// <summary>php/auth/ws_me.php 응답의 data 필드.</summary>
+public sealed class MeResult
+{
+    [JsonPropertyName("user")] public WorkSupportUser? User { get; set; }
+    [JsonPropertyName("expires_in")] public int ExpiresIn { get; set; }
+}

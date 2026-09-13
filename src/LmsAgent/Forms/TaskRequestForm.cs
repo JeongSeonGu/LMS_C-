@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using LmsAgent.Models;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
 
@@ -32,6 +33,7 @@ public sealed class TaskRequestForm : Form
     public TaskRequestForm(TaskRequestPayload payload)
     {
         Text = "새로운 작업 요청";
+        Icon = AppIconProvider.Icon;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
