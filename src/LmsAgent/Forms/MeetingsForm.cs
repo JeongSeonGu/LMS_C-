@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 using LmsAgent.Networking;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
 

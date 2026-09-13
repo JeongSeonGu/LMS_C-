@@ -171,7 +171,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         });
     }
 
-    private async void OnLoginClicked(object? sender, EventArgs e)
+    private void OnLoginClicked(object? sender, EventArgs e)
     {
         using var form = new LoginForm(_api, _session, _settings.SavedLoginId);
         if (form.ShowDialog() != DialogResult.OK)

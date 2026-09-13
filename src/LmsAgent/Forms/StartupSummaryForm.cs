@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using LmsAgent.Networking;
+using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
 
