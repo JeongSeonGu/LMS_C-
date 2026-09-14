@@ -25,6 +25,8 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly DutyNotificationService _dutyService;
     private readonly ScheduleOverlayService _scheduleOverlayService;
     private readonly AutoPrintService _autoPrintService;
+    private readonly LicenseGuardService _licenseGuardService;
+    private readonly BreakBoardService _breakBoardService;
     private readonly NotifyIcon _trayIcon;
 
     private readonly ToolStripMenuItem _connectionStatusItem;
@@ -50,6 +52,8 @@ public sealed class TrayApplicationContext : ApplicationContext
         _dutyService = new DutyNotificationService(_api, _settings);
         _scheduleOverlayService = new ScheduleOverlayService(_api, _session, _settings);
         _autoPrintService = new AutoPrintService(_api, _session, _settings);
+        _licenseGuardService = new LicenseGuardService(_api, _settings);
+        _breakBoardService = new BreakBoardService(_settings);
 
         _session.SessionChanged += OnSessionChanged;
         _session.ScheduleChanged += OnScheduleChanged;
@@ -102,6 +106,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _dutyService.Start();
         _autoPrintService.Start();
         _scheduleOverlayService.ApplySettings();
+        _breakBoardService.Start();
     }
 
     private void RunOnUiThread(Action action)
@@ -247,6 +252,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         SettingsStore.Save(_settings);
         _scheduleOverlayService.ApplySettings();
+        _ = _licenseGuardService.CheckAsync();
 
         var today = DateTime.Today.ToString("yyyy-MM-dd");
         if (_settings.ShowStartupNoticeModal && _settings.StartupNoticeSuppressedDate != today)
@@ -395,6 +401,8 @@ public sealed class TrayApplicationContext : ApplicationContext
         _dutyService.Dispose();
         _scheduleOverlayService.Dispose();
         _autoPrintService.Dispose();
+        _licenseGuardService.Dispose();
+        _breakBoardService.Dispose();
         _api.Dispose();
         _ = _wsClient.StopAsync();
         ExitThread();

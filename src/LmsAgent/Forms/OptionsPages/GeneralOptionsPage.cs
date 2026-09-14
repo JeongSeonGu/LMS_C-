@@ -20,6 +20,21 @@ public sealed class GeneralOptionsPage : UserControl, IOptionsPage
         Left = 20, Top = 120, Width = 380, Text = "첫 시작 시 공지사항 알림",
     };
 
+    private readonly CheckBox _breakBoardEnabledBox = new()
+    {
+        Left = 20, Top = 202, Width = 380, Text = "쉬는 시간 전자칠판 페이지 활성화",
+    };
+
+    private readonly ComboBox _breakBoardMonitorBox = new()
+    {
+        Left = 130, Top = 230, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList,
+    };
+
+    private readonly CheckBox _breakEndCountdownBox = new()
+    {
+        Left = 20, Top = 262, Width = 380, Text = "쉬는 시간 종료안내",
+    };
+
     public string CategoryName => "일반";
 
     public GeneralOptionsPage()
@@ -54,6 +69,26 @@ public sealed class GeneralOptionsPage : UserControl, IOptionsPage
         };
         UiTheme.StyleHintLabel(startupHint);
         Controls.Add(startupHint);
+
+        Controls.Add(_breakBoardEnabledBox);
+        Controls.Add(new Label { Left = 20, Top = 233, Width = 100, Text = "출력 모니터" });
+        Controls.Add(_breakBoardMonitorBox);
+        Controls.Add(_breakEndCountdownBox);
+
+        var breakBoardHint = new Label
+        {
+            Left = 20, Top = 292, Width = 380, Height = 55,
+            Text = "환경설정 > 차시에서 계산된 쉬는 시간에 맞춰 환경설정 > 네트워크의\n" +
+                   "\"전자칠판 페이지\"를 선택한 모니터에 전체화면으로 띄우고, 쉬는 시간이\n" +
+                   "끝나면 자동으로 닫습니다. 종료안내를 켜면 끝나기 2분 전에 카운트다운을 보여줍니다.",
+        };
+        UiTheme.StyleHintLabel(breakBoardHint);
+        Controls.Add(breakBoardHint);
+
+        foreach (var option in DisplayHelper.GetMonitorOptions())
+        {
+            _breakBoardMonitorBox.Items.Add(option);
+        }
     }
 
     public void LoadFrom(AppSettings settings)
@@ -61,6 +96,9 @@ public sealed class GeneralOptionsPage : UserControl, IOptionsPage
         _schoolNameBox.Text = settings.SchoolName;
         _autoStartBox.Checked = settings.AutoStartWithWindows;
         _startupNoticeBox.Checked = settings.ShowStartupNoticeModal;
+        _breakBoardEnabledBox.Checked = settings.BreakBoardEnabled;
+        _breakEndCountdownBox.Checked = settings.BreakEndCountdownEnabled;
+        ScheduleOptionsPage.SelectMonitor(_breakBoardMonitorBox, settings.BreakBoardMonitorIndex);
     }
 
     public void SaveTo(AppSettings settings)
@@ -68,5 +106,8 @@ public sealed class GeneralOptionsPage : UserControl, IOptionsPage
         settings.SchoolName = _schoolNameBox.Text.Trim();
         settings.AutoStartWithWindows = _autoStartBox.Checked;
         settings.ShowStartupNoticeModal = _startupNoticeBox.Checked;
+        settings.BreakBoardEnabled = _breakBoardEnabledBox.Checked;
+        settings.BreakEndCountdownEnabled = _breakEndCountdownBox.Checked;
+        settings.BreakBoardMonitorIndex = (_breakBoardMonitorBox.SelectedItem as MonitorOption)?.Index ?? 0;
     }
 }

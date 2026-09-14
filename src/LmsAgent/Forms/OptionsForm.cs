@@ -68,9 +68,11 @@ public sealed class OptionsForm : Form
         {
             new GeneralOptionsPage(),
             new ScheduleOptionsPage(),
+            new PeriodOptionsPage(),
             new DutyOptionsPage(),
             new PrintOptionsPage(),
             new NetworkOptionsPage(),
+            new LicenseOptionsPage(),
         };
 
         foreach (var page in _pages)

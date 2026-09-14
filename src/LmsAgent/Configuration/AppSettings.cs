@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace LmsAgent.Configuration;
 
@@ -50,6 +51,15 @@ public sealed class AppSettings
     /// 같은 날에는 로그인해도 팝업을 다시 띄우지 않습니다. 사용자가 직접 편집하는 값이 아닙니다.</summary>
     public string? StartupNoticeSuppressedDate { get; set; }
 
+    /// <summary>체크 시 쉬는 시간에 전자칠판 페이지를 선택한 모니터에 전체화면으로 띄웁니다.</summary>
+    public bool BreakBoardEnabled { get; set; }
+
+    /// <summary>전자칠판 페이지를 띄울 모니터의 Screen.AllScreens 인덱스.</summary>
+    public int BreakBoardMonitorIndex { get; set; }
+
+    /// <summary>체크 시 쉬는 시간 종료 2분 전에 카운트다운 안내 모달을 띄웁니다.</summary>
+    public bool BreakEndCountdownEnabled { get; set; }
+
     // ── 프로그램 동작 ─────────────────────────────────────────
     public bool AutoStartWithWindows { get; set; } = true;
     public string? SavedLoginId { get; set; }
@@ -83,4 +93,13 @@ public sealed class AppSettings
 
     /// <summary>자동 인쇄 중복 방지용 마지막 인쇄일("yyyy-MM-dd"). 사용자가 직접 편집하는 값이 아닙니다.</summary>
     public string? LastAutoPrintDate { get; set; }
+
+    // ── 차시 ──────────────────────────────────────────────────
+    /// <summary>하루 시간표(교시/점심시간) 목록. 4교시 다음에는 "차시 추가"가 자동으로
+    /// 점심시간을 먼저 넣어줍니다. 쉬는 시간은 이 목록의 빈 구간으로 계산합니다.</summary>
+    public List<PeriodSetting> Periods { get; set; } = new();
+
+    // ── 라이센스 ──────────────────────────────────────────────
+    /// <summary>학교 정보(auth_key)와 대조할 인증키. 값이 다르면 프로그램이 3분 뒤 자동 종료됩니다.</summary>
+    public string? LicenseKey { get; set; }
 }

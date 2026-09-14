@@ -27,6 +27,9 @@ public sealed class SchoolInfoDetail
     [JsonPropertyName("logo_url")] public string? LogoUrl { get; set; }
     [JsonPropertyName("updated_at")] public string? UpdatedAt { get; set; }
     [JsonPropertyName("updated_name")] public string? UpdatedName { get; set; }
+
+    /// <summary>학교별 라이센스 인증키. 환경설정 &gt; 라이센스에 입력한 값과 대조합니다.</summary>
+    [JsonPropertyName("auth_key")] public string? AuthKey { get; set; }
 }
 
 public sealed class SchoolStudentRow
