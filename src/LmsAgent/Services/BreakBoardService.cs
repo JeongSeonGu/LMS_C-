@@ -2,6 +2,7 @@ using System;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace LmsAgent.Services;
 
