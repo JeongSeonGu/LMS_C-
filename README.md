@@ -288,34 +288,39 @@ src/LmsAgent/
 
 ## 웹소켓 서버(Node.js) 연동 참고 구현
 
-> **이 부분은 이 저장소(C# 클라이언트)와 별개인 Node.js 웹소켓 서버 쪽 변경이 필요합니다.**
-> 대화 중에 "현재 Node.js 쪽의 웹소켓 설정 코드는 아래와 같다"고 말씀하셨지만 실제 코드는
-> 함께 전달되지 않아, 기존 코드를 직접 수정하는 대신 **적용 가능한 참고 구현**을
-> `nodejs-reference/`에 새로 작성해 두었습니다. 실제 서버 코드가 이 구조와 다르다면
-> (프레임워크, 인증 방식 등) 아래 두 파일의 로직만 참고해서 이식해 주세요.
+> **이 부분은 이 저장소(C# 클라이언트)와 별개인 Node.js(Socket.IO) 서버 쪽 변경이 필요합니다.**
 
-Windows 클라이언트가 학사 일정을 등록/수정/삭제하면 웹소켓으로 `schedule.updated` 메시지를
-보내는데(위 "웹소켓(작업 요청) 기능" 참고), 이 알림을 **같은 학교의 웹페이지(브라우저)
-클라이언트들에게 릴레이해서 웹 쪽 학사달력도 새로고침되도록** 하려면 서버가 이 메시지를
-받아서 다시 뿌려줘야 합니다. 요청하신 대로 **연결 관리(접속/해제)만 하는 코어**와
-**SchoolWork 전용 메시지 처리 모듈**을 분리해서 구성했습니다(관리·패치가 쉬워집니다).
+기존 서버는 서비스마다(`ClassVote` 등) 연결 파일 안에 `socket.on('서비스명', ...)`으로
+입장 처리를, `socket.on('서비스명_ms', ...)`으로 실제 메세지 처리를 등록해 두고, 메세지
+처리 자체는 `require`한 별도 파일(`ws_InteractiveMsg.js` 등)에 위임하는 구조입니다. 기존
+서비스와 충돌 없이, 같은 방식으로 **`LMS_WindowAgent`**라는 이름으로 추가했습니다.
 
 | 파일 | 역할 |
 |---|---|
-| `nodejs-reference/wsServer.js` | 접속/해제/에러/하트비트만 처리하는 순수 웹소켓 코어. 메시지 내용은 전혀 해석하지 않고 등록된 모듈에 위임합니다. |
-| `nodejs-reference/schoolWorkSocket.js` | SchoolWork 전용 메시지(`task.request`/`task.response`/`schedule.updated`/`ping`) 처리 모듈. `wsServer.js`에 `.use(...)`로 등록해서 사용합니다. |
-| `nodejs-reference/example-server.js` | 위 두 파일을 실제 HTTP(S) 서버에 연결하는 예시(`ws` 패키지 필요: `npm install ws`). |
+| `nodejs-reference/LMS_WindowAgent-connection-snippet.js` | 기존 연결 파일의 `io.on('connection', socket => { ... })` 안에 그대로 붙여넣을 블록. `ClassVote`/`ClassVote_ms`와 완전히 같은 모양으로 `LMS_WindowAgent`/`LMS_WindowAgent_ms` 이벤트를 등록합니다. |
+| `nodejs-reference/ws_LmsWindowAgent.js` | `ws_InteractiveMsg.js`처럼 실제 메세지 처리만 담당하는 별도 모듈. `SocketMsg_LmsWindowAgentMsg(data, io, userList)`를 내보냅니다. |
 
-핵심 아이디어:
+적용 방법:
 
-- `wsServer.js`는 "연결이 생겼다/메시지가 왔다/연결이 끊겼다"는 사실만 등록된 모듈들에게
-  통지합니다. 이 파일은 새 기능이 추가되어도 거의 바뀔 일이 없습니다.
-- `schoolWorkSocket.js`는 학교 단위로 소켓을 그룹핑해 두었다가, 한 소켓에서
-  `schedule.updated`(또는 `task.request`/`task.response`)가 오면 **같은 학교의 다른
-  소켓들에게만** 그대로 릴레이합니다. 어느 소켓이 어느 학교 소속인지는
-  `getSchoolIdForSocket` 콜백으로 주입하므로, 실제 인증/세션 방식에 맞게 구현만 채우면 됩니다.
-- 웹페이지(브라우저) 쪽 자바스크립트는 이 웹소켓에 접속해서 `schedule.updated` 메시지를
-  받으면 학사달력을 다시 불러오도록 구현하면 됩니다(웹 쪽 코드는 이번 세션 범위 밖입니다).
+1. `nodejs-reference/LMS_WindowAgent-connection-snippet.js`의 내용을 기존 연결 파일의
+   `ClassVote` 블록 옆(같은 `socket` 스코프 안)에 그대로 붙여넣으세요.
+2. `nodejs-reference/ws_LmsWindowAgent.js`를 기존 `ws_InteractiveMsg.js`와 같은 폴더에
+   `ws_LmsWindowAgent.js`로 저장하세요.
+3. LmsAgent(Windows)가 `task.request`/`task.response`/`schedule.updated` 등을 보내면
+   `LMS_WindowAgent_ms` 이벤트로 도착하고, `ws_LmsWindowAgent.js`가 이를 해석해서 같은
+   `LMS_WindowAgent` 그룹(`userList`에서 `group`이 `Connection_LMS_WindowAgent`로
+   시작하는 소켓들)에게 그대로 릴레이합니다.
+4. 웹페이지(브라우저) 쪽에서도 같은 소켓에 접속해 `socket.emit('LMS_WindowAgent', {...})`로
+   같은 그룹에 입장해 두면, Windows 클라이언트가 보낸 `schedule.updated`를
+   `socket.on('LMS_WindowAgent_ms', ...)`로 받아 학사달력을 새로고침할 수 있습니다
+   (웹 쪽 자바스크립트 구현 자체는 이번 세션 범위 밖입니다).
+
+> `userList`의 실제 필드명(`socketId`/`group` 등)은 기존 `Add_UserList` 구현에 맞춰
+> `ws_LmsWindowAgent.js`의 `broadcastToGroup` 함수를 조정해 주세요. 이 저장소에는
+> 기존 서버의 `Add_UserList`/`ws_InteractiveMsg.js` 코드가 없어 필드명을 정확히 맞추지
+> 못했고, 같은 소켓 채널을 여러 학교가 공유한다면 학교 단위 필터(`schoolId` 등)도
+> 함께 추가해야 합니다. `task.request`/`task.response`도 지금은 그룹 전체에 릴레이하도록
+> 되어 있는데, 특정 교사 PC 하나에만 보내야 한다면 대상 식별자로 필터링하도록 다듬으세요.
 
 ## UI 디자인 개편 (하늘색·오렌지 테마)
 
