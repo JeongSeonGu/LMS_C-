@@ -19,21 +19,23 @@ public sealed class StartupSummaryForm : Form
     /// <summary>체크된 채로 닫히면 오늘 하루는 로그인해도 이 알림을 다시 띄우지 않습니다.</summary>
     public bool SuppressToday => _dontShowTodayBox.Checked;
 
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
     private readonly FlowLayoutPanel _content = new()
     {
-        Left = 16, Top = 16, Width = 460, Height = 470,
+        Dock = DockStyle.Fill,
         AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     private readonly Button _closeButton = new()
     {
-        Left = 396, Top = 496, Width = 80, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 396, Top = 10, Width = 80, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly CheckBox _dontShowTodayBox = new()
     {
-        Left = 16, Top = 500, Width = 200, Text = "오늘은 보지 않기", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 16, Top = 14, Width = 200, Text = "오늘은 보지 않기", Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     public StartupSummaryForm(WorkSupportApiClient api)
@@ -48,15 +50,18 @@ public sealed class StartupSummaryForm : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(492, 536);
-        MinimumSize = new Size(640, 480);
+        MinimumSize = new Size(460, 480);
 
         _content.BackColor = UiTheme.Background;
         UiTheme.StyleSecondaryButton(_closeButton);
         _dontShowTodayBox.ForeColor = UiTheme.TextSecondary;
 
-        Controls.Add(_content);
-        Controls.Add(_dontShowTodayBox);
-        Controls.Add(_closeButton);
+        _contentPanel.Controls.Add(_content);
+        _bottomPanel.Controls.Add(_dontShowTodayBox);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_bottomPanel);
         _closeButton.Click += (_, _) => Close();
 
         Load += async (_, _) => await LoadAsync();

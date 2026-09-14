@@ -19,29 +19,29 @@ public sealed class ScheduleListForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly SessionManager _session;
 
-    private readonly Button _prevMonthButton = new() { Left = 20, Top = 15, Width = 30, Text = "<" };
-    private readonly Button _todayButton = new() { Left = 55, Top = 15, Width = 55, Text = "오늘" };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
+    private readonly Button _prevMonthButton = new() { Left = 20, Top = 13, Width = 30, Text = "<" };
+    private readonly Button _todayButton = new() { Left = 55, Top = 13, Width = 55, Text = "오늘" };
     private readonly Label _monthLabel = new()
     {
-        Left = 115, Top = 18, Width = 140, TextAlign = ContentAlignment.MiddleCenter,
+        Left = 115, Top = 16, Width = 140, TextAlign = ContentAlignment.MiddleCenter,
         Font = new Font("맑은 고딕", 10F, FontStyle.Bold),
     };
-    private readonly Button _nextMonthButton = new() { Left = 255, Top = 15, Width = 30, Text = ">" };
+    private readonly Button _nextMonthButton = new() { Left = 255, Top = 13, Width = 30, Text = ">" };
 
     private readonly Button _addButton = new()
     {
-        Left = 560, Top = 15, Width = 90, Text = "새 일정...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 560, Top = 13, Width = 90, Text = "새 일정...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
-    private readonly MonthCalendarView _calendar = new()
-    {
-        Left = 20, Top = 50, Width = 630, Height = 460,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-    };
+    private readonly MonthCalendarView _calendar = new() { Dock = DockStyle.Fill };
 
     private readonly Button _closeButton = new()
     {
-        Left = 560, Top = 520, Width = 90, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 560, Top = 10, Width = 90, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     public ScheduleListForm(WorkSupportApiClient api, SessionManager session)
@@ -59,13 +59,17 @@ public sealed class ScheduleListForm : Form
         ClientSize = new Size(900, 700);
         MinimumSize = new Size(680, 520);
 
-        Controls.Add(_prevMonthButton);
-        Controls.Add(_todayButton);
-        Controls.Add(_monthLabel);
-        Controls.Add(_nextMonthButton);
-        Controls.Add(_addButton);
-        Controls.Add(_calendar);
-        Controls.Add(_closeButton);
+        _topPanel.Controls.Add(_prevMonthButton);
+        _topPanel.Controls.Add(_todayButton);
+        _topPanel.Controls.Add(_monthLabel);
+        _topPanel.Controls.Add(_nextMonthButton);
+        _topPanel.Controls.Add(_addButton);
+        _contentPanel.Controls.Add(_calendar);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         UiTheme.StyleFlatToolButton(_prevMonthButton);
         UiTheme.StyleFlatToolButton(_todayButton);

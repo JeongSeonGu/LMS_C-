@@ -13,47 +13,42 @@ public sealed class RequestEditForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly RequestDetail? _editing;
 
-    private readonly TextBox _titleBox = new() { Left = 110, Top = 20, Width = 280 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 170, Padding = new Padding(20, 12, 20, 0) };
+    private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 78 };
+
+    private readonly TextBox _titleBox = new() { Left = 90, Top = 8, Width = 280 };
 
     private readonly ComboBox _categoryBox = new()
     {
-        Left = 110, Top = 55, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 90, Top = 43, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
     private readonly ComboBox _priorityBox = new()
     {
-        Left = 110, Top = 90, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 90, Top = 78, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
     private readonly ComboBox _statusBox = new()
     {
-        Left = 110, Top = 125, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 90, Top = 113, Width = 150, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
-    private readonly CheckBox _hasDueBox = new() { Left = 110, Top = 160, Width = 100, Text = "기한 지정" };
-    private readonly DateTimePicker _dueDatePicker = new() { Left = 210, Top = 158, Width = 150, Enabled = false };
+    private readonly CheckBox _hasDueBox = new() { Left = 90, Top = 148, Width = 100, Text = "기한 지정" };
+    private readonly DateTimePicker _dueDatePicker = new() { Left = 190, Top = 146, Width = 150, Enabled = false };
 
     private readonly TextBox _bodyBox = new()
     {
-        Left = 20, Top = 194, Width = 370, Height = 120,
+        Dock = DockStyle.Fill,
         Multiline = true, ScrollBars = ScrollBars.Vertical,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _saveButton = new()
-    {
-        Left = 210, Top = 324, Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-    };
-
-    private readonly Button _cancelButton = new()
-    {
-        Left = 300, Top = 324, Width = 90, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-    };
+    private readonly Button _saveButton = new() { Left = 210, Top = 8, Width = 80 };
+    private readonly Button _cancelButton = new() { Left = 300, Top = 8, Width = 90, Text = "취소" };
 
     private readonly Label _statusLabel = new()
     {
-        Left = 20, Top = 358, Width = 370, Height = 30, ForeColor = UiTheme.Danger,
-        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+        Left = 20, Top = 42, Width = 370, Height = 30, ForeColor = UiTheme.Danger,
     };
 
     public RequestEditForm(WorkSupportApiClient api, RequestMeta meta, RequestDetail? editing = null)
@@ -68,23 +63,27 @@ public sealed class RequestEditForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(410, 394);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(410, 420);
+        MinimumSize = new Size(420, 440);
 
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "제목" });
-        Controls.Add(new Label { Left = 20, Top = 58, Width = 90, Text = "분류" });
-        Controls.Add(new Label { Left = 20, Top = 93, Width = 90, Text = "우선순위" });
-        Controls.Add(new Label { Left = 20, Top = 128, Width = 90, Text = "상태" });
-        Controls.Add(_titleBox);
-        Controls.Add(_categoryBox);
-        Controls.Add(_priorityBox);
-        Controls.Add(_statusBox);
-        Controls.Add(_hasDueBox);
-        Controls.Add(_dueDatePicker);
-        Controls.Add(_bodyBox);
-        Controls.Add(_saveButton);
-        Controls.Add(_cancelButton);
-        Controls.Add(_statusLabel);
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 11, Width = 90, Text = "제목" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 46, Width = 90, Text = "분류" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 81, Width = 90, Text = "우선순위" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 116, Width = 90, Text = "상태" });
+        _topPanel.Controls.Add(_titleBox);
+        _topPanel.Controls.Add(_categoryBox);
+        _topPanel.Controls.Add(_priorityBox);
+        _topPanel.Controls.Add(_statusBox);
+        _topPanel.Controls.Add(_hasDueBox);
+        _topPanel.Controls.Add(_dueDatePicker);
+        _bodyPanel.Controls.Add(_bodyBox);
+        _bottomPanel.Controls.Add(_saveButton);
+        _bottomPanel.Controls.Add(_cancelButton);
+        _bottomPanel.Controls.Add(_statusLabel);
+
+        Controls.Add(_bodyPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         _saveButton.Text = editing is null ? "등록" : "수정";
 

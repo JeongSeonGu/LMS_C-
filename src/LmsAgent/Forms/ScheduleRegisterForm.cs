@@ -27,69 +27,61 @@ public sealed class ScheduleRegisterForm : Form
 
     private bool _suppressAutoAdjust;
 
-    private readonly TextBox _titleBox = new() { Left = 120, Top = 20, Width = 260 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 218, Padding = new Padding(20, 12, 20, 0) };
+    private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 78 };
 
-    private readonly CheckBox _allDayBox = new() { Left = 120, Top = 55, Width = 200, Text = "종일" };
+    private readonly TextBox _titleBox = new() { Left = 100, Top = 8, Width = 260 };
+
+    private readonly CheckBox _allDayBox = new() { Left = 100, Top = 43, Width = 200, Text = "종일" };
 
     private readonly DateTimePicker _startDatePicker = new()
     {
-        Left = 120, Top = 88, Width = 130, Format = DateTimePickerFormat.Short,
+        Left = 100, Top = 76, Width = 130, Format = DateTimePickerFormat.Short,
     };
 
     private readonly DateTimePicker _startTimePicker = new()
     {
-        Left = 260, Top = 88, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
+        Left = 240, Top = 76, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
     };
 
     private readonly DateTimePicker _endDatePicker = new()
     {
-        Left = 120, Top = 120, Width = 130, Format = DateTimePickerFormat.Short,
+        Left = 100, Top = 108, Width = 130, Format = DateTimePickerFormat.Short,
     };
 
     private readonly DateTimePicker _endTimePicker = new()
     {
-        Left = 260, Top = 120, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
+        Left = 240, Top = 108, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
     };
 
     private readonly ComboBox _deptBox = new()
     {
-        Left = 120,
-        Top = 153,
+        Left = 100,
+        Top = 141,
         Width = 260,
         DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
-    private readonly TextBox _locationBox = new() { Left = 120, Top = 188, Width = 260 };
+    private readonly TextBox _locationBox = new() { Left = 100, Top = 176, Width = 260 };
 
     private readonly TextBox _noteBox = new()
     {
-        Left = 20,
-        Top = 222,
-        Width = 360,
-        Height = 80,
+        Dock = DockStyle.Fill,
         Multiline = true,
         ScrollBars = ScrollBars.Vertical,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _saveButton = new()
-    {
-        Left = 210, Top = 312, Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-    };
-
-    private readonly Button _cancelButton = new()
-    {
-        Left = 300, Top = 312, Width = 80, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-    };
+    private readonly Button _saveButton = new() { Left = 210, Top = 8, Width = 80 };
+    private readonly Button _cancelButton = new() { Left = 300, Top = 8, Width = 80, Text = "취소" };
 
     private readonly Label _statusLabel = new()
     {
         Left = 20,
-        Top = 346,
+        Top = 42,
         Width = 360,
         Height = 30,
         ForeColor = UiTheme.Danger,
-        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
     };
 
     /// <param name="editing">null이면 신규 등록, 값이 있으면 해당 일정을 수정합니다.</param>
@@ -108,26 +100,30 @@ public sealed class ScheduleRegisterForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(400, 388);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(400, 420);
+        MinimumSize = new Size(420, 440);
 
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "제목" });
-        Controls.Add(new Label { Left = 20, Top = 91, Width = 90, Text = "시작" });
-        Controls.Add(new Label { Left = 20, Top = 123, Width = 90, Text = "종료" });
-        Controls.Add(new Label { Left = 20, Top = 156, Width = 90, Text = "담당업무" });
-        Controls.Add(new Label { Left = 20, Top = 191, Width = 90, Text = "장소" });
-        Controls.Add(_titleBox);
-        Controls.Add(_allDayBox);
-        Controls.Add(_startDatePicker);
-        Controls.Add(_startTimePicker);
-        Controls.Add(_endDatePicker);
-        Controls.Add(_endTimePicker);
-        Controls.Add(_deptBox);
-        Controls.Add(_locationBox);
-        Controls.Add(_noteBox);
-        Controls.Add(_saveButton);
-        Controls.Add(_cancelButton);
-        Controls.Add(_statusLabel);
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 11, Width = 90, Text = "제목" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 79, Width = 90, Text = "시작" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 111, Width = 90, Text = "종료" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 144, Width = 90, Text = "담당업무" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 179, Width = 90, Text = "장소" });
+        _topPanel.Controls.Add(_titleBox);
+        _topPanel.Controls.Add(_allDayBox);
+        _topPanel.Controls.Add(_startDatePicker);
+        _topPanel.Controls.Add(_startTimePicker);
+        _topPanel.Controls.Add(_endDatePicker);
+        _topPanel.Controls.Add(_endTimePicker);
+        _topPanel.Controls.Add(_deptBox);
+        _topPanel.Controls.Add(_locationBox);
+        _bodyPanel.Controls.Add(_noteBox);
+        _bottomPanel.Controls.Add(_saveButton);
+        _bottomPanel.Controls.Add(_cancelButton);
+        _bottomPanel.Controls.Add(_statusLabel);
+
+        Controls.Add(_bodyPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         _saveButton.Text = editing is null ? "등록" : "수정";
 

@@ -15,39 +15,36 @@ public sealed class OptionsForm : Form
     private readonly AppSettings _settings;
     private readonly IOptionsPage[] _pages;
 
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(12, 12, 12, 0) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 52 };
+
     private readonly TreeView _tree = new()
     {
-        Left = 12,
-        Top = 12,
+        Dock = DockStyle.Left,
         Width = 140,
-        Height = 360,
         HideSelection = false,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom,
     };
 
     private readonly Panel _pageHost = new()
     {
-        Left = 164,
-        Top = 12,
-        Width = 420,
-        Height = 360,
+        Dock = DockStyle.Fill,
+        Padding = new Padding(12, 0, 0, 0),
         BorderStyle = BorderStyle.FixedSingle,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     private readonly Button _okButton = new()
     {
-        Left = 336, Top = 384, Width = 80, Text = "확인", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 336, Top = 10, Width = 80, Text = "확인", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly Button _cancelButton = new()
     {
-        Left = 422, Top = 384, Width = 80, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 422, Top = 10, Width = 80, Text = "취소", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly Button _applyButton = new()
     {
-        Left = 508, Top = 384, Width = 80, Text = "적용", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 508, Top = 10, Width = 80, Text = "적용", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     public OptionsForm(AppSettings settings)
@@ -78,7 +75,6 @@ public sealed class OptionsForm : Form
         foreach (var page in _pages)
         {
             var control = (Control)page;
-            control.Bounds = new Rectangle(0, 0, _pageHost.Width, _pageHost.Height);
             control.Visible = false;
             _pageHost.Controls.Add(control);
             page.LoadFrom(_settings);
@@ -86,11 +82,14 @@ public sealed class OptionsForm : Form
             _tree.Nodes.Add(new TreeNode(page.CategoryName) { Tag = page });
         }
 
-        Controls.Add(_tree);
-        Controls.Add(_pageHost);
-        Controls.Add(_okButton);
-        Controls.Add(_cancelButton);
-        Controls.Add(_applyButton);
+        _contentPanel.Controls.Add(_pageHost);
+        _contentPanel.Controls.Add(_tree);
+        _bottomPanel.Controls.Add(_okButton);
+        _bottomPanel.Controls.Add(_cancelButton);
+        _bottomPanel.Controls.Add(_applyButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_bottomPanel);
 
         AcceptButton = _okButton;
         CancelButton = _cancelButton;

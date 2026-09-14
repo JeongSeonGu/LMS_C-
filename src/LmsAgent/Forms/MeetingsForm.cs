@@ -18,37 +18,40 @@ public sealed class MeetingsForm : Form
     private string? _appscriptUrl;
     private string? _sheetViewUrl;
 
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
     private readonly ComboBox _sourceBox = new()
     {
-        Left = 20, Top = 16, Width = 160, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 20, Top = 14, Width = 160, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
     private readonly Button _registerButton = new()
     {
-        Left = 400, Top = 14, Width = 100, Text = "안건 등록...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 400, Top = 12, Width = 100, Text = "안건 등록...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly Button _viewSheetButton = new()
     {
-        Left = 508, Top = 14, Width = 90, Text = "시트 보기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 508, Top = 12, Width = 90, Text = "시트 보기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly DataGridView _grid = new()
     {
-        Left = 20, Top = 50, Width = 578, Height = 380,
+        Dock = DockStyle.Fill,
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         RowHeadersVisible = false, AllowUserToResizeRows = false,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     private readonly Label _guideLabel = new()
     {
-        Left = 20, Top = 434, Width = 460, Height = 20, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 20, Top = 12, Width = 460, Height = 20, Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     private readonly Button _closeButton = new()
     {
-        Left = 498, Top = 432, Width = 100, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 498, Top = 10, Width = 100, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     public MeetingsForm(WorkSupportApiClient api)
@@ -74,12 +77,16 @@ public sealed class MeetingsForm : Form
         UiTheme.StyleSecondaryButton(_viewSheetButton);
         UiTheme.StyleSecondaryButton(_closeButton);
 
-        Controls.Add(_sourceBox);
-        Controls.Add(_registerButton);
-        Controls.Add(_viewSheetButton);
-        Controls.Add(_grid);
-        Controls.Add(_guideLabel);
-        Controls.Add(_closeButton);
+        _topPanel.Controls.Add(_sourceBox);
+        _topPanel.Controls.Add(_registerButton);
+        _topPanel.Controls.Add(_viewSheetButton);
+        _contentPanel.Controls.Add(_grid);
+        _bottomPanel.Controls.Add(_guideLabel);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         _sourceBox.SelectedIndexChanged += async (_, _) => await LoadAsync();
         _registerButton.Click += (_, _) => OpenUrl(_appscriptUrl, "안건 등록 링크가 설정되어 있지 않습니다.");

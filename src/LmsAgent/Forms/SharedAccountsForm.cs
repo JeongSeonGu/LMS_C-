@@ -17,18 +17,20 @@ public sealed class SharedAccountsForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 20, 20, 0) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
     private readonly DataGridView _grid = new()
     {
-        Left = 20, Top = 20, Width = 560, Height = 380,
+        Dock = DockStyle.Fill,
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         AllowUserToResizeRows = false, RowHeadersVisible = false, AutoGenerateColumns = false,
         SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     private readonly Button _closeButton = new()
     {
-        Left = 480, Top = 410, Width = 100, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 480, Top = 10, Width = 100, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private DataGridViewButtonColumn _viewColumn = null!;
@@ -53,8 +55,10 @@ public sealed class SharedAccountsForm : Form
         UiTheme.StyleGridButtonColumn(_viewColumn, primary: true);
         UiTheme.StyleGridButtonColumn(_openColumn);
 
-        Controls.Add(_grid);
-        Controls.Add(_closeButton);
+        _contentPanel.Controls.Add(_grid);
+        _bottomPanel.Controls.Add(_closeButton);
+        Controls.Add(_contentPanel);
+        Controls.Add(_bottomPanel);
 
         UiTheme.StyleSecondaryButton(_closeButton);
 

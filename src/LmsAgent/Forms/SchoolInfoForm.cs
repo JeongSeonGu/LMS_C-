@@ -15,6 +15,12 @@ public sealed class SchoolInfoForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
+    private readonly Panel _headerPanel = new() { Dock = DockStyle.Top, Height = 90 };
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 10, 20, 0) };
+    private readonly Panel _studentGridPanel = new() { Dock = DockStyle.Left, Width = 280, Padding = new Padding(0, 0, 10, 10) };
+    private readonly Panel _infoPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 0, 10) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
     private readonly PictureBox _logoBox = new()
     {
         Left = 20, Top = 20, Width = 64, Height = 64, SizeMode = PictureBoxSizeMode.Zoom,
@@ -31,22 +37,17 @@ public sealed class SchoolInfoForm : Form
 
     private readonly DataGridView _studentGrid = new()
     {
-        Left = 20, Top = 100, Width = 260, Height = 220,
+        Dock = DockStyle.Fill,
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         AllowUserToResizeRows = false, RowHeadersVisible = false, AutoGenerateColumns = false,
         SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom,
     };
 
-    private readonly Label _infoLabel = new()
-    {
-        Left = 296, Top = 100, Width = 300, Height = 220,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
-    };
+    private readonly Label _infoLabel = new() { Dock = DockStyle.Fill };
 
     private readonly Button _closeButton = new()
     {
-        Left = 496, Top = 330, Width = 100, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 496, Top = 10, Width = 100, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     public SchoolInfoForm(WorkSupportApiClient api)
@@ -67,12 +68,18 @@ public sealed class SchoolInfoForm : Form
         UiTheme.StyleGrid(_studentGrid);
         UiTheme.StyleHintLabel(_badgeLabel);
 
-        Controls.Add(_logoBox);
-        Controls.Add(_nameLabel);
-        Controls.Add(_badgeLabel);
-        Controls.Add(_studentGrid);
-        Controls.Add(_infoLabel);
-        Controls.Add(_closeButton);
+        _headerPanel.Controls.Add(_logoBox);
+        _headerPanel.Controls.Add(_nameLabel);
+        _headerPanel.Controls.Add(_badgeLabel);
+        _studentGridPanel.Controls.Add(_studentGrid);
+        _infoPanel.Controls.Add(_infoLabel);
+        _contentPanel.Controls.Add(_infoPanel);
+        _contentPanel.Controls.Add(_studentGridPanel);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_headerPanel);
+        Controls.Add(_bottomPanel);
 
         UiTheme.StyleSecondaryButton(_closeButton);
 

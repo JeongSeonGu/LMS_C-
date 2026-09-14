@@ -19,48 +19,51 @@ public sealed class DutyRegisterForm : Form
     private readonly WorkSupportApiClient _api;
     private bool _canManage;
 
-    private readonly Button _prevMonthButton = new() { Left = 20, Top = 15, Width = 30, Text = "<" };
-    private readonly Button _todayButton = new() { Left = 55, Top = 15, Width = 55, Text = "오늘" };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
+    private readonly Button _prevMonthButton = new() { Left = 20, Top = 13, Width = 30, Text = "<" };
+    private readonly Button _todayButton = new() { Left = 55, Top = 13, Width = 55, Text = "오늘" };
 
     private readonly Label _monthLabel = new()
     {
-        Left = 115, Top = 18, Width = 140, TextAlign = ContentAlignment.MiddleCenter,
+        Left = 115, Top = 16, Width = 140, TextAlign = ContentAlignment.MiddleCenter,
     };
 
-    private readonly Button _nextMonthButton = new() { Left = 255, Top = 15, Width = 30, Text = ">" };
+    private readonly Button _nextMonthButton = new() { Left = 255, Top = 13, Width = 30, Text = ">" };
 
     private readonly Button _addButton = new()
     {
-        Left = 560, Top = 14, Width = 90, Text = "등록...", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 560, Top = 12, Width = 90, Text = "등록...", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly DataGridView _grid = new()
     {
-        Left = 20, Top = 50, Width = 620, Height = 380,
+        Dock = DockStyle.Fill,
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         AllowUserToResizeRows = false, RowHeadersVisible = false, AutoGenerateColumns = false,
         SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     private readonly Button _editButton = new()
     {
-        Left = 20, Top = 440, Width = 80, Text = "수정...", Enabled = false, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 20, Top = 10, Width = 80, Text = "수정...", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     private readonly Button _deleteButton = new()
     {
-        Left = 108, Top = 440, Width = 80, Text = "삭제", Enabled = false, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 108, Top = 10, Width = 80, Text = "삭제", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     private readonly Label _hintLabel = new()
     {
-        Left = 200, Top = 445, Width = 350, Height = 20, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 200, Top = 15, Width = 350, Height = 20, Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     private readonly Button _closeButton = new()
     {
-        Left = 560, Top = 440, Width = 80, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 560, Top = 10, Width = 80, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private DateTime _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -92,16 +95,20 @@ public sealed class DutyRegisterForm : Form
         _monthLabel.ForeColor = UiTheme.SkyDark;
         UiTheme.StyleHintLabel(_hintLabel);
 
-        Controls.Add(_prevMonthButton);
-        Controls.Add(_todayButton);
-        Controls.Add(_monthLabel);
-        Controls.Add(_nextMonthButton);
-        Controls.Add(_addButton);
-        Controls.Add(_grid);
-        Controls.Add(_editButton);
-        Controls.Add(_deleteButton);
-        Controls.Add(_hintLabel);
-        Controls.Add(_closeButton);
+        _topPanel.Controls.Add(_prevMonthButton);
+        _topPanel.Controls.Add(_todayButton);
+        _topPanel.Controls.Add(_monthLabel);
+        _topPanel.Controls.Add(_nextMonthButton);
+        _topPanel.Controls.Add(_addButton);
+        _contentPanel.Controls.Add(_grid);
+        _bottomPanel.Controls.Add(_editButton);
+        _bottomPanel.Controls.Add(_deleteButton);
+        _bottomPanel.Controls.Add(_hintLabel);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         _prevMonthButton.Click += (_, _) => ChangeMonth(-1);
         _nextMonthButton.Click += (_, _) => ChangeMonth(1);

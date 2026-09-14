@@ -16,43 +16,46 @@ public sealed class RequestsForm : Form
     private readonly WorkSupportApiClient _api;
     private RequestMeta _meta = new();
 
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 12) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+
     private readonly ComboBox _scopeBox = new()
     {
-        Left = 20, Top = 16, Width = 130, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 20, Top = 14, Width = 130, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
     private readonly Button _addButton = new()
     {
-        Left = 470, Top = 14, Width = 90, Text = "등록...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 470, Top = 12, Width = 90, Text = "등록...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly DataGridView _grid = new()
     {
-        Left = 20, Top = 50, Width = 620, Height = 380,
+        Dock = DockStyle.Fill,
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         AllowUserToResizeRows = false, RowHeadersVisible = false, AutoGenerateColumns = false,
         SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     private readonly Button _editButton = new()
     {
-        Left = 20, Top = 440, Width = 80, Text = "수정...", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 20, Top = 10, Width = 80, Text = "수정...", Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     private readonly Button _deleteButton = new()
     {
-        Left = 108, Top = 440, Width = 80, Text = "삭제", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+        Left = 108, Top = 10, Width = 80, Text = "삭제", Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
     private readonly Button _refreshButton = new()
     {
-        Left = 470, Top = 440, Width = 80, Text = "새로고침", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 470, Top = 10, Width = 80, Text = "새로고침", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private readonly Button _closeButton = new()
     {
-        Left = 560, Top = 440, Width = 80, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 560, Top = 10, Width = 80, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     public RequestsForm(WorkSupportApiClient api)
@@ -80,13 +83,17 @@ public sealed class RequestsForm : Form
         UiTheme.StyleSecondaryButton(_refreshButton);
         UiTheme.StyleSecondaryButton(_closeButton);
 
-        Controls.Add(_scopeBox);
-        Controls.Add(_addButton);
-        Controls.Add(_grid);
-        Controls.Add(_editButton);
-        Controls.Add(_deleteButton);
-        Controls.Add(_refreshButton);
-        Controls.Add(_closeButton);
+        _topPanel.Controls.Add(_scopeBox);
+        _topPanel.Controls.Add(_addButton);
+        _contentPanel.Controls.Add(_grid);
+        _bottomPanel.Controls.Add(_editButton);
+        _bottomPanel.Controls.Add(_deleteButton);
+        _bottomPanel.Controls.Add(_refreshButton);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         _scopeBox.SelectedIndexChanged += async (_, _) => await LoadAsync();
         _addButton.Click += OnAddClicked;

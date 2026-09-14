@@ -17,61 +17,56 @@ public sealed class DutyEditForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly DutyRecord? _editing;
 
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 194, Padding = new Padding(20, 12, 20, 0) };
+    private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 8, 20, 8) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 78 };
+
     private readonly ComboBox _positionBox = new()
     {
-        Left = 110, Top = 20, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 90, Top = 8, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
     private readonly ComboBox _dutyTypeBox = new()
     {
-        Left = 110, Top = 55, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList,
+        Left = 90, Top = 43, Width = 260, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
     private readonly DateTimePicker _datePicker = new()
     {
-        Left = 110, Top = 90, Width = 260, Format = DateTimePickerFormat.Short,
+        Left = 90, Top = 78, Width = 260, Format = DateTimePickerFormat.Short,
     };
 
-    private readonly CheckBox _allDayBox = new() { Left = 110, Top = 124, Width = 200, Text = "종일", Checked = true };
+    private readonly CheckBox _allDayBox = new() { Left = 90, Top = 112, Width = 200, Text = "종일", Checked = true };
 
     private readonly DateTimePicker _startTimePicker = new()
     {
-        Left = 110, Top = 158, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
+        Left = 90, Top = 146, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
     };
 
     private readonly Label _timeRangeSeparator = new()
     {
-        Left = 226, Top = 162, Width = 16, Text = "~",
+        Left = 206, Top = 150, Width = 16, Text = "~",
     };
 
     private readonly DateTimePicker _endTimePicker = new()
     {
-        Left = 246, Top = 158, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
+        Left = 226, Top = 146, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
     };
 
-    private readonly Label _timeLabel = new() { Left = 20, Top = 161, Width = 90, Text = "시간" };
+    private readonly Label _timeLabel = new() { Left = 0, Top = 149, Width = 90, Text = "시간" };
 
     private readonly TextBox _noteBox = new()
     {
-        Left = 20, Top = 228, Width = 350, Height = 90,
+        Dock = DockStyle.Fill,
         Multiline = true, ScrollBars = ScrollBars.Vertical,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _saveButton = new()
-    {
-        Left = 190, Top = 330, Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-    };
-
-    private readonly Button _cancelButton = new()
-    {
-        Left = 280, Top = 330, Width = 90, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
-    };
+    private readonly Button _saveButton = new() { Left = 190, Top = 8, Width = 80 };
+    private readonly Button _cancelButton = new() { Left = 280, Top = 8, Width = 90, Text = "취소" };
 
     private readonly Label _statusLabel = new()
     {
-        Left = 20, Top = 364, Width = 350, Height = 30, ForeColor = UiTheme.Danger,
-        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+        Left = 20, Top = 42, Width = 350, Height = 30, ForeColor = UiTheme.Danger,
     };
 
     public DutyEditForm(WorkSupportApiClient api, DutyRecord? editing = null, DateTime? initialDate = null)
@@ -86,25 +81,28 @@ public sealed class DutyEditForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(390, 404);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(390, 420);
+        MinimumSize = new Size(420, 440);
 
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "대상" });
-        Controls.Add(new Label { Left = 20, Top = 58, Width = 90, Text = "구분" });
-        Controls.Add(new Label { Left = 20, Top = 93, Width = 90, Text = "날짜" });
-        Controls.Add(_timeLabel);
-        Controls.Add(new Label { Left = 20, Top = 231, Width = 90, Text = "메모" });
-        Controls.Add(_positionBox);
-        Controls.Add(_dutyTypeBox);
-        Controls.Add(_datePicker);
-        Controls.Add(_allDayBox);
-        Controls.Add(_startTimePicker);
-        Controls.Add(_timeRangeSeparator);
-        Controls.Add(_endTimePicker);
-        Controls.Add(_noteBox);
-        Controls.Add(_saveButton);
-        Controls.Add(_cancelButton);
-        Controls.Add(_statusLabel);
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 11, Width = 90, Text = "대상" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 46, Width = 90, Text = "구분" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 81, Width = 90, Text = "날짜" });
+        _topPanel.Controls.Add(_timeLabel);
+        _topPanel.Controls.Add(_positionBox);
+        _topPanel.Controls.Add(_dutyTypeBox);
+        _topPanel.Controls.Add(_datePicker);
+        _topPanel.Controls.Add(_allDayBox);
+        _topPanel.Controls.Add(_startTimePicker);
+        _topPanel.Controls.Add(_timeRangeSeparator);
+        _topPanel.Controls.Add(_endTimePicker);
+        _bodyPanel.Controls.Add(_noteBox);
+        _bottomPanel.Controls.Add(_saveButton);
+        _bottomPanel.Controls.Add(_cancelButton);
+        _bottomPanel.Controls.Add(_statusLabel);
+
+        Controls.Add(_bodyPanel);
+        Controls.Add(_topPanel);
+        Controls.Add(_bottomPanel);
 
         _saveButton.Text = editing is null ? "등록" : "수정";
 

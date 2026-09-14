@@ -16,33 +16,25 @@ public sealed class UserInfoForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly SessionManager _session;
 
-    private readonly Label _nameValueLabel = new() { Left = 120, Top = 20, Width = 220 };
-    private readonly Label _positionValueLabel = new() { Left = 120, Top = 45, Width = 220 };
-    private readonly Label _deptValueLabel = new() { Left = 120, Top = 70, Width = 220 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 258, Padding = new Padding(20, 12, 20, 0) };
+    private readonly Panel _statusPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 12) };
 
-    private readonly TextBox _loginIdBox = new() { Left = 120, Top = 100, Width = 220 };
-    private readonly TextBox _contactBox = new() { Left = 120, Top = 130, Width = 220 };
-    private readonly TextBox _currentPwBox = new() { Left = 120, Top = 160, Width = 220, PasswordChar = '*' };
-    private readonly TextBox _newPwBox = new() { Left = 120, Top = 190, Width = 220, PasswordChar = '*' };
+    private readonly Label _nameValueLabel = new() { Left = 100, Top = 8, Width = 220 };
+    private readonly Label _positionValueLabel = new() { Left = 100, Top = 33, Width = 220 };
+    private readonly Label _deptValueLabel = new() { Left = 100, Top = 58, Width = 220 };
 
-    private readonly Button _saveButton = new()
-    {
-        Left = 150, Top = 225, Width = 90, Text = "저장", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
+    private readonly TextBox _loginIdBox = new() { Left = 100, Top = 91, Width = 220 };
+    private readonly TextBox _contactBox = new() { Left = 100, Top = 121, Width = 220 };
+    private readonly TextBox _currentPwBox = new() { Left = 100, Top = 151, Width = 220, PasswordChar = '*' };
+    private readonly TextBox _newPwBox = new() { Left = 100, Top = 181, Width = 220, PasswordChar = '*' };
 
-    private readonly Button _closeButton = new()
-    {
-        Left = 250, Top = 225, Width = 90, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
+    private readonly Button _saveButton = new() { Left = 130, Top = 216, Width = 90, Text = "저장" };
+    private readonly Button _closeButton = new() { Left = 230, Top = 216, Width = 90, Text = "닫기" };
 
     private readonly Label _statusLabel = new()
     {
-        Left = 20,
-        Top = 260,
-        Width = 320,
-        Height = 40,
+        Dock = DockStyle.Fill,
         ForeColor = UiTheme.Danger,
-        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
     };
 
     public UserInfoForm(WorkSupportApiClient api, SessionManager session)
@@ -57,28 +49,31 @@ public sealed class UserInfoForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(360, 305);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(360, 340);
+        MinimumSize = new Size(400, 380);
 
-        Controls.Add(new Label { Left = 20, Top = 20, Width = 90, Text = "이름" });
-        Controls.Add(new Label { Left = 20, Top = 45, Width = 90, Text = "직위" });
-        Controls.Add(new Label { Left = 20, Top = 70, Width = 90, Text = "담당업무" });
-        Controls.Add(new Label { Left = 20, Top = 103, Width = 90, Text = "아이디" });
-        Controls.Add(new Label { Left = 20, Top = 133, Width = 90, Text = "연락처" });
-        Controls.Add(new Label { Left = 20, Top = 163, Width = 90, Text = "현재 비밀번호" });
-        Controls.Add(new Label { Left = 20, Top = 193, Width = 90, Text = "새 비밀번호" });
-        Controls.Add(new Label { Left = 20, Top = 210, Width = 320, Text = "(변경하지 않으려면 비워두세요)", ForeColor = UiTheme.TextSecondary });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 8, Width = 90, Text = "이름" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 33, Width = 90, Text = "직위" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 58, Width = 90, Text = "담당업무" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 94, Width = 90, Text = "아이디" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 124, Width = 90, Text = "연락처" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 154, Width = 90, Text = "현재 비밀번호" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 184, Width = 90, Text = "새 비밀번호" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 201, Width = 320, Text = "(변경하지 않으려면 비워두세요)", ForeColor = UiTheme.TextSecondary });
 
-        Controls.Add(_nameValueLabel);
-        Controls.Add(_positionValueLabel);
-        Controls.Add(_deptValueLabel);
-        Controls.Add(_loginIdBox);
-        Controls.Add(_contactBox);
-        Controls.Add(_currentPwBox);
-        Controls.Add(_newPwBox);
-        Controls.Add(_saveButton);
-        Controls.Add(_closeButton);
-        Controls.Add(_statusLabel);
+        _topPanel.Controls.Add(_nameValueLabel);
+        _topPanel.Controls.Add(_positionValueLabel);
+        _topPanel.Controls.Add(_deptValueLabel);
+        _topPanel.Controls.Add(_loginIdBox);
+        _topPanel.Controls.Add(_contactBox);
+        _topPanel.Controls.Add(_currentPwBox);
+        _topPanel.Controls.Add(_newPwBox);
+        _topPanel.Controls.Add(_saveButton);
+        _topPanel.Controls.Add(_closeButton);
+        _statusPanel.Controls.Add(_statusLabel);
+
+        Controls.Add(_statusPanel);
+        Controls.Add(_topPanel);
 
         UiTheme.StylePrimaryButton(_saveButton);
         UiTheme.StyleSecondaryButton(_closeButton);

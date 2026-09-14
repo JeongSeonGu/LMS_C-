@@ -8,36 +8,27 @@ namespace LmsAgent.Forms;
 /// <summary>서버가 보낸 작업 요청을 사용자에게 보여주고 수락/거절을 입력받는 창입니다.</summary>
 public sealed class TaskRequestForm : Form
 {
+    private readonly Panel _titlePanel = new() { Dock = DockStyle.Top, Height = 40, Padding = new Padding(20, 20, 20, 0) };
+    private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 8, 20, 8) };
+    private readonly Panel _buttonPanel = new() { Dock = DockStyle.Bottom, Height = 56 };
+
     private readonly Label _titleLabel = new()
     {
-        Left = 20,
-        Top = 20,
-        Width = 340,
+        Dock = DockStyle.Fill,
         Font = UiTheme.SubTitleFont,
         ForeColor = UiTheme.SkyDark,
     };
 
     private readonly TextBox _descriptionBox = new()
     {
-        Left = 20,
-        Top = 55,
-        Width = 340,
-        Height = 100,
+        Dock = DockStyle.Fill,
         Multiline = true,
         ReadOnly = true,
         ScrollBars = ScrollBars.Vertical,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _acceptButton = new()
-    {
-        Left = 150, Top = 165, Width = 90, Text = "수락", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
-
-    private readonly Button _rejectButton = new()
-    {
-        Left = 250, Top = 165, Width = 90, Text = "거절", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
+    private readonly Button _acceptButton = new() { Left = 150, Top = 12, Width = 90, Text = "수락" };
+    private readonly Button _rejectButton = new() { Left = 250, Top = 12, Width = 90, Text = "거절" };
 
     public TaskRequestForm(TaskRequestPayload payload)
     {
@@ -49,8 +40,8 @@ public sealed class TaskRequestForm : Form
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
-        ClientSize = new Size(380, 205);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(380, 230);
+        MinimumSize = new Size(400, 260);
 
         _titleLabel.Text = payload.Title ?? payload.TaskType;
         _descriptionBox.Text = payload.Description ?? "";
@@ -59,10 +50,14 @@ public sealed class TaskRequestForm : Form
         UiTheme.StylePrimaryButton(_acceptButton);
         UiTheme.StyleSecondaryButton(_rejectButton);
 
-        Controls.Add(_titleLabel);
-        Controls.Add(_descriptionBox);
-        Controls.Add(_acceptButton);
-        Controls.Add(_rejectButton);
+        _titlePanel.Controls.Add(_titleLabel);
+        _bodyPanel.Controls.Add(_descriptionBox);
+        _buttonPanel.Controls.Add(_acceptButton);
+        _buttonPanel.Controls.Add(_rejectButton);
+
+        Controls.Add(_bodyPanel);
+        Controls.Add(_titlePanel);
+        Controls.Add(_buttonPanel);
 
         _acceptButton.Click += (_, _) =>
         {

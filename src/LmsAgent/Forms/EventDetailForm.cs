@@ -16,32 +16,28 @@ public sealed class EventDetailForm : Form
 
     public DetailAction SelectedAction { get; private set; } = DetailAction.None;
 
+    private readonly Panel _titlePanel = new() { Dock = DockStyle.Top, Height = 46, Padding = new Padding(16, 16, 16, 0) };
+    private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(16, 0, 16, 8) };
+    private readonly Panel _buttonPanel = new() { Dock = DockStyle.Bottom, Height = 48 };
+
     private readonly Label _titleLabel = new()
     {
-        Left = 16, Top = 16, Width = 308, Font = new Font("맑은 고딕", 11F, FontStyle.Bold),
+        Dock = DockStyle.Fill, Font = new Font("맑은 고딕", 11F, FontStyle.Bold),
     };
 
     private readonly TextBox _bodyBox = new()
     {
-        Left = 16, Top = 46, Width = 308, Height = 150,
+        Dock = DockStyle.Fill,
         Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical,
         BorderStyle = BorderStyle.None, BackColor = UiTheme.Background,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _editButton = new()
-    {
-        Left = 16, Top = 208, Width = 80, Text = "수정", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
-
-    private readonly Button _deleteButton = new()
-    {
-        Left = 104, Top = 208, Width = 80, Text = "삭제", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
+    private readonly Button _editButton = new() { Left = 16, Top = 8, Width = 80, Text = "수정" };
+    private readonly Button _deleteButton = new() { Left = 104, Top = 8, Width = 80, Text = "삭제" };
 
     private readonly Button _closeButton = new()
     {
-        Left = 244, Top = 208, Width = 80, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 244, Top = 8, Width = 80, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     public EventDetailForm(string title, string bodyText, bool canEdit)
@@ -53,19 +49,23 @@ public sealed class EventDetailForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(340, 248);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(340, 280);
+        MinimumSize = new Size(360, 300);
 
         _titleLabel.Text = title;
         _bodyBox.Text = bodyText;
         _editButton.Enabled = canEdit;
         _deleteButton.Enabled = canEdit;
 
-        Controls.Add(_titleLabel);
-        Controls.Add(_bodyBox);
-        Controls.Add(_editButton);
-        Controls.Add(_deleteButton);
-        Controls.Add(_closeButton);
+        _titlePanel.Controls.Add(_titleLabel);
+        _bodyPanel.Controls.Add(_bodyBox);
+        _buttonPanel.Controls.Add(_editButton);
+        _buttonPanel.Controls.Add(_deleteButton);
+        _buttonPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_bodyPanel);
+        Controls.Add(_titlePanel);
+        Controls.Add(_buttonPanel);
 
         CancelButton = _closeButton;
 

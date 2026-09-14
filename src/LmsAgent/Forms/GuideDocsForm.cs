@@ -18,30 +18,28 @@ public sealed class GuideDocsForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
-    private readonly TreeView _tree = new()
-    {
-        Left = 20, Top = 20, Width = 300, Height = 400,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom,
-    };
+    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 20, 20, 0) };
+    private readonly Panel _treePanel = new() { Dock = DockStyle.Left, Width = 300, Padding = new Padding(0, 0, 16, 0) };
+    private readonly Panel _detailPanel = new() { Dock = DockStyle.Fill };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
 
-    private readonly Label _selectedLabel = new()
-    {
-        Left = 336, Top = 20, Width = 260, Height = 60, Anchor = AnchorStyles.Top | AnchorStyles.Right,
-    };
+    private readonly TreeView _tree = new() { Dock = DockStyle.Fill };
+
+    private readonly Label _selectedLabel = new() { Left = 0, Top = 0, Width = 260, Height = 60 };
 
     private readonly Button _downloadButton = new()
     {
-        Left = 336, Top = 90, Width = 110, Text = "다운로드...", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 0, Top = 70, Width = 110, Text = "다운로드...", Enabled = false,
     };
 
     private readonly Button _openButton = new()
     {
-        Left = 336, Top = 126, Width = 110, Text = "열어보기", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+        Left = 0, Top = 106, Width = 110, Text = "열어보기", Enabled = false,
     };
 
     private readonly Button _closeButton = new()
     {
-        Left = 336, Top = 400, Width = 110, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+        Left = 496, Top = 10, Width = 110, Text = "닫기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
     private GuideDoc? _selectedDoc;
@@ -66,11 +64,16 @@ public sealed class GuideDocsForm : Form
         UiTheme.StyleSecondaryButton(_openButton);
         UiTheme.StyleSecondaryButton(_closeButton);
 
-        Controls.Add(_tree);
-        Controls.Add(_selectedLabel);
-        Controls.Add(_downloadButton);
-        Controls.Add(_openButton);
-        Controls.Add(_closeButton);
+        _treePanel.Controls.Add(_tree);
+        _detailPanel.Controls.Add(_selectedLabel);
+        _detailPanel.Controls.Add(_downloadButton);
+        _detailPanel.Controls.Add(_openButton);
+        _contentPanel.Controls.Add(_detailPanel);
+        _contentPanel.Controls.Add(_treePanel);
+        _bottomPanel.Controls.Add(_closeButton);
+
+        Controls.Add(_contentPanel);
+        Controls.Add(_bottomPanel);
 
         _tree.AfterSelect += OnTreeSelect;
         _downloadButton.Click += async (_, _) => await DownloadAsync(openAfter: false);

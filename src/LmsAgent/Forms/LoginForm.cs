@@ -12,27 +12,20 @@ public sealed class LoginForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly SessionManager _session;
 
-    private readonly TextBox _idBox = new() { Left = 110, Top = 20, Width = 200 };
-    private readonly TextBox _passwordBox = new() { Left = 110, Top = 55, Width = 200, PasswordChar = '*' };
-    private readonly CheckBox _saveIdBox = new() { Left = 110, Top = 85, Width = 200, Text = "아이디 저장" };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 152, Padding = new Padding(20, 12, 20, 0) };
+    private readonly Panel _statusPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 12) };
 
-    private readonly Button _loginButton = new()
-    {
-        Left = 110, Top = 118, Width = 90, Text = "로그인", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
+    private readonly TextBox _idBox = new() { Left = 90, Top = 11, Width = 200 };
+    private readonly TextBox _passwordBox = new() { Left = 90, Top = 46, Width = 200, PasswordChar = '*' };
+    private readonly CheckBox _saveIdBox = new() { Left = 90, Top = 76, Width = 200, Text = "아이디 저장" };
 
-    private readonly Button _cancelButton = new()
-    {
-        Left = 220, Top = 118, Width = 90, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-    };
+    private readonly Button _loginButton = new() { Left = 90, Top = 109, Width = 90, Text = "로그인" };
+    private readonly Button _cancelButton = new() { Left = 190, Top = 109, Width = 90, Text = "취소" };
 
     // 진단 메시지(응답 스니펫 포함)가 길어질 수 있어 스크롤/복사가 가능한 읽기 전용 텍스트박스로 표시한다.
     private readonly TextBox _statusLabel = new()
     {
-        Left = 20,
-        Top = 152,
-        Width = 290,
-        Height = 90,
+        Dock = DockStyle.Fill,
         Multiline = true,
         ReadOnly = true,
         BorderStyle = BorderStyle.None,
@@ -40,7 +33,6 @@ public sealed class LoginForm : Form
         ScrollBars = ScrollBars.Vertical,
         ForeColor = UiTheme.Danger,
         TabStop = false,
-        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     public bool SaveLoginId => _saveIdBox.Checked;
@@ -59,17 +51,20 @@ public sealed class LoginForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(330, 250);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(330, 280);
+        MinimumSize = new Size(360, 340);
 
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 80, Text = "아이디" });
-        Controls.Add(new Label { Left = 20, Top = 58, Width = 80, Text = "비밀번호" });
-        Controls.Add(_idBox);
-        Controls.Add(_passwordBox);
-        Controls.Add(_saveIdBox);
-        Controls.Add(_loginButton);
-        Controls.Add(_cancelButton);
-        Controls.Add(_statusLabel);
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 14, Width = 80, Text = "아이디" });
+        _topPanel.Controls.Add(new Label { Left = 0, Top = 49, Width = 80, Text = "비밀번호" });
+        _topPanel.Controls.Add(_idBox);
+        _topPanel.Controls.Add(_passwordBox);
+        _topPanel.Controls.Add(_saveIdBox);
+        _topPanel.Controls.Add(_loginButton);
+        _topPanel.Controls.Add(_cancelButton);
+        _statusPanel.Controls.Add(_statusLabel);
+
+        Controls.Add(_statusPanel);
+        Controls.Add(_topPanel);
 
         if (!string.IsNullOrWhiteSpace(savedLoginId))
         {
