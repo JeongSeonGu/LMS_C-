@@ -314,6 +314,7 @@ public sealed class ScheduleRegisterForm : Form
             {
                 _statusLabel.ForeColor = UiTheme.Success;
                 _statusLabel.Text = _editing is null ? "등록되었습니다." : "수정되었습니다.";
+                _session.NotifyScheduleChanged();
                 DialogResult = DialogResult.OK;
                 Close();
             }

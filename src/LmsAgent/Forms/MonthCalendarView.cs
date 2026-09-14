@@ -22,6 +22,7 @@ public sealed class MonthCalendarView : UserControl
     private DateTime _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private List<SchoolEvent> _events = new();
     private Dictionary<int, Color> _deptColors = new();
+    private HashSet<DateTime> _dutyDates = new();
 
     private readonly List<(RectangleF Rect, SchoolEvent? Event, DateTime Day)> _hitAreas = new();
 
@@ -56,6 +57,14 @@ public sealed class MonthCalendarView : UserControl
         Invalidate();
     }
 
+    /// <summary>교장/교감/교무부장/행정실장의 복무(연가·출장·조퇴) 기록이 있는 날짜 집합을 설정합니다.
+    /// 해당 날짜의 칸에 작은 복무 표시 아이콘을 그립니다.</summary>
+    public void SetDutyDates(IEnumerable<DateTime> dates)
+    {
+        _dutyDates = new HashSet<DateTime>(dates.Select(d => d.Date));
+        Invalidate();
+    }
+
     private Color ColorFor(int? deptId)
     {
         if (deptId is int id && _deptColors.TryGetValue(id, out var color))
@@ -64,6 +73,26 @@ public sealed class MonthCalendarView : UserControl
         }
 
         return Color.FromArgb(154, 160, 166); // 관련 업무 없음/색상 미지정 기본값
+    }
+
+    /// <summary>
+    /// 교장/교감/교무부장/행정실장의 복무(연가·출장·조퇴) 기록이 있는 날짜의 셀 오른쪽 위에
+    /// 그리는 작은 클립보드 모양 표시입니다. 날짜 숫자와 겹치지 않도록 셀 오른쪽 끝에 붙입니다.
+    /// </summary>
+    private static void DrawDutyIcon(Graphics g, float cellRight, float cellTop)
+    {
+        const float size = 11f;
+        var rect = new RectangleF(cellRight - size - 4, cellTop + 3, size, size);
+
+        using var badgeBrush = new SolidBrush(UiTheme.OrangeDark);
+        g.FillRectangle(badgeBrush, rect.X, rect.Y + 1, rect.Width, rect.Height - 1);
+
+        var tabRect = new RectangleF(rect.X + size * 0.28f, rect.Y - 1, size * 0.44f, 2.5f);
+        g.FillRectangle(badgeBrush, tabRect);
+
+        using var linePen = new Pen(Color.White, 1f);
+        g.DrawLine(linePen, rect.X + 2, rect.Y + 5, rect.Right - 2, rect.Y + 5);
+        g.DrawLine(linePen, rect.X + 2, rect.Y + 8, rect.Right - 3, rect.Y + 8);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -129,6 +158,11 @@ public sealed class MonthCalendarView : UserControl
             {
                 using var dayBrush = new SolidBrush(UiTheme.TextPrimary);
                 g.DrawString(dayNumber.ToString(), dayFont, dayBrush, cellRect.X + 4, cellRect.Y + 2);
+            }
+
+            if (_dutyDates.Contains(date))
+            {
+                DrawDutyIcon(g, cellRect.Right, cellRect.Y);
             }
 
             var dayEvents = _events

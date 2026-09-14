@@ -64,6 +64,9 @@ public sealed class ScheduleOverlayService : IDisposable
         _overlay?.Hide();
     }
 
+    /// <summary>학사 일정이 방금 등록/수정/삭제되었을 때 30분 타이머를 기다리지 않고 바로 갱신합니다.</summary>
+    public void RefreshNow() => _ = RefreshAsync();
+
     private async Task RefreshAsync()
     {
         if (_overlay is null || !_settings.ScheduleWallpaperEnabled)

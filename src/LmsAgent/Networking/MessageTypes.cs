@@ -15,6 +15,13 @@ public static class MessageTypes
     public const string ScheduleRegister = "schedule.register";
     public const string ScheduleRegisterResult = "schedule.register.result";
 
+    /// <summary>
+    /// Windows 클라이언트에서 학사 일정이 등록/수정/삭제되었을 때 서버로 보내는 알림.
+    /// 서버는 이 메시지를 받으면 같은 학교의 웹페이지(브라우저) 클라이언트들에게
+    /// 새로고침이 필요하다는 것을 릴레이해야 합니다(README의 Node.js 연동 섹션 참고).
+    /// </summary>
+    public const string ScheduleUpdated = "schedule.updated";
+
     // 서버가 클라이언트에게 작업을 요청하고, 클라이언트가 결과를 회신하는 채널
     public const string TaskRequest = "task.request";
     public const string TaskResponse = "task.response";

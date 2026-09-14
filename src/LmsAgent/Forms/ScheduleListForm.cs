@@ -121,6 +121,24 @@ public sealed class ScheduleListForm : Form
             MessageBox.Show($"일정을 불러오는 중 오류가 발생했습니다: {ex.Message}",
                 "학사 일정", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+
+        try
+        {
+            // duty_status.php의 기록 대상은 항상 교장/교감/교무부장/행정실장이므로 별도 필터 없이 표시합니다.
+            var dutyResult = await _api.GetDutyStatusAsync(month.Year, month.Month);
+            if (dutyResult.Ok && dutyResult.Data is not null)
+            {
+                var dutyDates = dutyResult.Data
+                    .Select(r => r.DateValue)
+                    .Where(d => d.HasValue)
+                    .Select(d => d!.Value.ToDateTime(TimeOnly.MinValue));
+                _calendar.SetDutyDates(dutyDates);
+            }
+        }
+        catch
+        {
+            // 복무 표시는 부가 정보이므로 실패해도 일정 화면 자체는 그대로 보여줍니다.
+        }
     }
 
     private string DeptName(int? deptId)
@@ -198,6 +216,7 @@ public sealed class ScheduleListForm : Form
             var result = await _api.DeleteEventAsync(ev.Id);
             if (result.Ok)
             {
+                _session.NotifyScheduleChanged();
                 await LoadAsync();
             }
             else

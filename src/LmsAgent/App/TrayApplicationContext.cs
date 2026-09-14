@@ -52,6 +52,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _autoPrintService = new AutoPrintService(_api, _session, _settings);
 
         _session.SessionChanged += OnSessionChanged;
+        _session.ScheduleChanged += OnScheduleChanged;
 
         var menu = new ContextMenuStrip { Renderer = UiTheme.CreateMenuRenderer(), Font = UiTheme.BaseFont };
 
@@ -144,6 +145,38 @@ public sealed class TrayApplicationContext : ApplicationContext
                 ? $"다시 로그인 ({_session.Profile?.Name})"
                 : "로그인...";
         });
+    }
+
+    /// <summary>
+    /// 학사 일정이 Windows 쪽에서 등록/수정/삭제되었을 때 호출됩니다.
+    /// 배경화면 오버레이는 30분 타이머를 기다리지 않고 바로 갱신하고,
+    /// 서버에는 웹페이지 쪽도 새로고침하라는 웹소켓 알림을 보냅니다.
+    /// </summary>
+    private void OnScheduleChanged()
+    {
+        _scheduleOverlayService.RefreshNow();
+        _ = BroadcastScheduleUpdatedAsync();
+    }
+
+    private async Task BroadcastScheduleUpdatedAsync()
+    {
+        if (_wsClient.State != ConnectionState.Connected)
+        {
+            return;
+        }
+
+        try
+        {
+            await _wsClient.SendAsync(WsEnvelope.Create(MessageTypes.ScheduleUpdated, new
+            {
+                source = "windows",
+                updatedAt = DateTime.UtcNow.ToString("o"),
+            }));
+        }
+        catch
+        {
+            // 전송 실패는 조용히 무시합니다(다음 변경 시점이나 재연결 후 다시 시도됩니다).
+        }
     }
 
     private void OnTaskRequested(WsEnvelope envelope)

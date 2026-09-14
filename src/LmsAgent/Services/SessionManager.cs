@@ -30,6 +30,12 @@ public sealed class SessionManager
 
     public event Action? SessionChanged;
 
+    /// <summary>학사 일정이 등록/수정/삭제된 직후 발생합니다. 배경화면 오버레이 즉시 갱신,
+    /// 웹소켓을 통한 웹페이지 새로고침 알림 등에 사용합니다.</summary>
+    public event Action? ScheduleChanged;
+
+    public void NotifyScheduleChanged() => ScheduleChanged?.Invoke();
+
     public void SetSession(WorkSupportUser profile)
     {
         Profile = profile;
