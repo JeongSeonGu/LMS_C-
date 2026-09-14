@@ -26,22 +26,31 @@ public sealed class TaskRequestForm : Form
         Multiline = true,
         ReadOnly = true,
         ScrollBars = ScrollBars.Vertical,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _acceptButton = new() { Left = 150, Top = 165, Width = 90, Text = "수락" };
-    private readonly Button _rejectButton = new() { Left = 250, Top = 165, Width = 90, Text = "거절" };
+    private readonly Button _acceptButton = new()
+    {
+        Left = 150, Top = 165, Width = 90, Text = "수락", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
+
+    private readonly Button _rejectButton = new()
+    {
+        Left = 250, Top = 165, Width = 90, Text = "거절", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
 
     public TaskRequestForm(TaskRequestPayload payload)
     {
         Text = "새로운 작업 요청";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         TopMost = true;
         ClientSize = new Size(380, 205);
+        MinimumSize = new Size(640, 480);
 
         _titleLabel.Text = payload.Title ?? payload.TaskType;
         _descriptionBox.Text = payload.Description ?? "";

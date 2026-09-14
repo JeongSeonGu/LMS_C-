@@ -37,14 +37,23 @@ public sealed class RequestEditForm : Form
     {
         Left = 20, Top = 194, Width = 370, Height = 120,
         Multiline = true, ScrollBars = ScrollBars.Vertical,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _saveButton = new() { Left = 210, Top = 324, Width = 80 };
-    private readonly Button _cancelButton = new() { Left = 300, Top = 324, Width = 90, Text = "취소" };
+    private readonly Button _saveButton = new()
+    {
+        Left = 210, Top = 324, Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
+
+    private readonly Button _cancelButton = new()
+    {
+        Left = 300, Top = 324, Width = 90, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     private readonly Label _statusLabel = new()
     {
         Left = 20, Top = 358, Width = 370, Height = 30, ForeColor = UiTheme.Danger,
+        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
     };
 
     public RequestEditForm(WorkSupportApiClient api, RequestMeta meta, RequestDetail? editing = null)
@@ -55,11 +64,12 @@ public sealed class RequestEditForm : Form
         Text = editing is null ? "요청사항 등록" : "요청사항 수정";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(410, 394);
+        MinimumSize = new Size(640, 480);
 
         Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "제목" });
         Controls.Add(new Label { Left = 20, Top = 58, Width = 90, Text = "분류" });

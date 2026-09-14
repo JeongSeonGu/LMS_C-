@@ -23,18 +23,33 @@ public sealed class MeetingsForm : Form
         Left = 20, Top = 16, Width = 160, DropDownStyle = ComboBoxStyle.DropDownList,
     };
 
-    private readonly Button _registerButton = new() { Left = 400, Top = 14, Width = 100, Text = "안건 등록..." };
-    private readonly Button _viewSheetButton = new() { Left = 508, Top = 14, Width = 90, Text = "시트 보기" };
+    private readonly Button _registerButton = new()
+    {
+        Left = 400, Top = 14, Width = 100, Text = "안건 등록...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+    };
+
+    private readonly Button _viewSheetButton = new()
+    {
+        Left = 508, Top = 14, Width = 90, Text = "시트 보기", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+    };
 
     private readonly DataGridView _grid = new()
     {
         Left = 20, Top = 50, Width = 578, Height = 380,
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         RowHeadersVisible = false, AllowUserToResizeRows = false,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Label _guideLabel = new() { Left = 20, Top = 434, Width = 460, Height = 20 };
-    private readonly Button _closeButton = new() { Left = 498, Top = 432, Width = 100, Text = "닫기" };
+    private readonly Label _guideLabel = new()
+    {
+        Left = 20, Top = 434, Width = 460, Height = 20, Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
+
+    private readonly Button _closeButton = new()
+    {
+        Left = 498, Top = 432, Width = 100, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     public MeetingsForm(WorkSupportApiClient api)
     {
@@ -43,11 +58,12 @@ public sealed class MeetingsForm : Form
         Text = "협의사항";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(618, 470);
+        MinimumSize = new Size(640, 480);
 
         _sourceBox.Items.AddRange(new object[] { "협의안건 전달사항", "협의안건 전달내용 보관" });
         _sourceBox.SelectedIndex = 0;

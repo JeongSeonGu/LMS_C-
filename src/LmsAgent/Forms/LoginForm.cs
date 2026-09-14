@@ -15,8 +15,16 @@ public sealed class LoginForm : Form
     private readonly TextBox _idBox = new() { Left = 110, Top = 20, Width = 200 };
     private readonly TextBox _passwordBox = new() { Left = 110, Top = 55, Width = 200, PasswordChar = '*' };
     private readonly CheckBox _saveIdBox = new() { Left = 110, Top = 85, Width = 200, Text = "아이디 저장" };
-    private readonly Button _loginButton = new() { Left = 110, Top = 118, Width = 90, Text = "로그인" };
-    private readonly Button _cancelButton = new() { Left = 220, Top = 118, Width = 90, Text = "취소" };
+
+    private readonly Button _loginButton = new()
+    {
+        Left = 110, Top = 118, Width = 90, Text = "로그인", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
+
+    private readonly Button _cancelButton = new()
+    {
+        Left = 220, Top = 118, Width = 90, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
 
     // 진단 메시지(응답 스니펫 포함)가 길어질 수 있어 스크롤/복사가 가능한 읽기 전용 텍스트박스로 표시한다.
     private readonly TextBox _statusLabel = new()
@@ -32,6 +40,7 @@ public sealed class LoginForm : Form
         ScrollBars = ScrollBars.Vertical,
         ForeColor = UiTheme.Danger,
         TabStop = false,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
     public bool SaveLoginId => _saveIdBox.Checked;
@@ -46,11 +55,12 @@ public sealed class LoginForm : Form
         Text = "사용자 로그인";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(330, 250);
+        MinimumSize = new Size(640, 480);
 
         Controls.Add(new Label { Left = 20, Top = 23, Width = 80, Text = "아이디" });
         Controls.Add(new Label { Left = 20, Top = 58, Width = 80, Text = "비밀번호" });

@@ -22,6 +22,9 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
 
     private readonly TextBox _apiBaseUrlBox = new() { Left = 150, Top = 145, Width = 260 };
 
+    private readonly TextBox _workSupportPageUrlBox = new() { Left = 150, Top = 240, Width = 260 };
+    private readonly TextBox _smartBoardPageUrlBox = new() { Left = 150, Top = 275, Width = 260 };
+
     public string CategoryName => "네트워크";
 
     public NetworkOptionsPage()
@@ -58,6 +61,20 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
 
+        Controls.Add(new Label { Left = 20, Top = 243, Width = 300, Text = "교무업무 페이지" });
+        Controls.Add(_workSupportPageUrlBox);
+        Controls.Add(new Label { Left = 20, Top = 278, Width = 300, Text = "전자칠판 페이지" });
+        Controls.Add(_smartBoardPageUrlBox);
+
+        var pageHint = new Label
+        {
+            Left = 20, Top = 308, Width = 380, Height = 40,
+            Text = "교무업무 페이지는 트레이 메뉴에서 바로 열 수 있습니다. 전자칠판 페이지는\n" +
+                   "쉬는 시간에 자동으로 띄우는 화면 주소입니다(일반 설정에서 활성화).",
+        };
+        UiTheme.StyleHintLabel(pageHint);
+        Controls.Add(pageHint);
+
         var version = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
         _versionBox.Text = version.ToString();
     }
@@ -67,6 +84,8 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         _serverUrlBox.Text = settings.ServerUrl;
         _updateUrlBox.Text = settings.UpdateManifestUrl;
         _apiBaseUrlBox.Text = settings.ApiBaseUrlOverride ?? "";
+        _workSupportPageUrlBox.Text = settings.WorkSupportPageUrl;
+        _smartBoardPageUrlBox.Text = settings.SmartBoardPageUrl ?? "";
     }
 
     public void SaveTo(AppSettings settings)
@@ -75,6 +94,9 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         settings.UpdateManifestUrl = _updateUrlBox.Text.Trim();
         var apiBaseUrl = _apiBaseUrlBox.Text.Trim();
         settings.ApiBaseUrlOverride = apiBaseUrl.Length > 0 ? apiBaseUrl : null;
+        settings.WorkSupportPageUrl = _workSupportPageUrlBox.Text.Trim();
+        var smartBoardUrl = _smartBoardPageUrlBox.Text.Trim();
+        settings.SmartBoardPageUrl = smartBoardUrl.Length > 0 ? smartBoardUrl : null;
     }
 
     public string? ValidateSettings()
@@ -93,6 +115,17 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         if (apiBaseUrl.Length > 0 && !Uri.TryCreate(apiBaseUrl, UriKind.Absolute, out _))
         {
             return "WorkSupport 서버 주소가 올바르지 않습니다.";
+        }
+
+        if (!Uri.TryCreate(_workSupportPageUrlBox.Text.Trim(), UriKind.Absolute, out _))
+        {
+            return "교무업무 페이지 주소가 올바르지 않습니다.";
+        }
+
+        var smartBoardUrl = _smartBoardPageUrlBox.Text.Trim();
+        if (smartBoardUrl.Length > 0 && !Uri.TryCreate(smartBoardUrl, UriKind.Absolute, out _))
+        {
+            return "전자칠판 페이지 주소가 올바르지 않습니다.";
         }
 
         return null;

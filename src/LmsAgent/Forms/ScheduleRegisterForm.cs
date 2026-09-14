@@ -69,10 +69,18 @@ public sealed class ScheduleRegisterForm : Form
         Height = 80,
         Multiline = true,
         ScrollBars = ScrollBars.Vertical,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _saveButton = new() { Left = 210, Top = 312, Width = 80 };
-    private readonly Button _cancelButton = new() { Left = 300, Top = 312, Width = 80, Text = "취소" };
+    private readonly Button _saveButton = new()
+    {
+        Left = 210, Top = 312, Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
+
+    private readonly Button _cancelButton = new()
+    {
+        Left = 300, Top = 312, Width = 80, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     private readonly Label _statusLabel = new()
     {
@@ -81,6 +89,7 @@ public sealed class ScheduleRegisterForm : Form
         Width = 360,
         Height = 30,
         ForeColor = UiTheme.Danger,
+        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
     };
 
     /// <param name="editing">null이면 신규 등록, 값이 있으면 해당 일정을 수정합니다.</param>
@@ -95,11 +104,12 @@ public sealed class ScheduleRegisterForm : Form
         Text = editing is null ? "학사 일정 등록" : "학사 일정 수정";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(400, 388);
+        MinimumSize = new Size(640, 480);
 
         Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "제목" });
         Controls.Add(new Label { Left = 20, Top = 91, Width = 90, Text = "시작" });

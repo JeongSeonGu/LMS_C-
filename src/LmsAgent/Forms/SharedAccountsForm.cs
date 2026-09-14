@@ -23,9 +23,13 @@ public sealed class SharedAccountsForm : Form
         ReadOnly = true, AllowUserToAddRows = false, AllowUserToDeleteRows = false,
         AllowUserToResizeRows = false, RowHeadersVisible = false, AutoGenerateColumns = false,
         SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _closeButton = new() { Left = 480, Top = 410, Width = 100, Text = "닫기" };
+    private readonly Button _closeButton = new()
+    {
+        Left = 480, Top = 410, Width = 100, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     private DataGridViewButtonColumn _viewColumn = null!;
     private DataGridViewButtonColumn _openColumn = null!;
@@ -37,11 +41,12 @@ public sealed class SharedAccountsForm : Form
         Text = "공통 계정 정보";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(600, 440);
+        MinimumSize = new Size(640, 480);
 
         BuildColumns();
         UiTheme.StyleGrid(_grid);

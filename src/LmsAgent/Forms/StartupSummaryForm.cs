@@ -16,13 +16,25 @@ public sealed class StartupSummaryForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
+    /// <summary>체크된 채로 닫히면 오늘 하루는 로그인해도 이 알림을 다시 띄우지 않습니다.</summary>
+    public bool SuppressToday => _dontShowTodayBox.Checked;
+
     private readonly FlowLayoutPanel _content = new()
     {
         Left = 16, Top = 16, Width = 460, Height = 470,
         AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _closeButton = new() { Left = 396, Top = 496, Width = 80, Text = "닫기" };
+    private readonly Button _closeButton = new()
+    {
+        Left = 396, Top = 496, Width = 80, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
+
+    private readonly CheckBox _dontShowTodayBox = new()
+    {
+        Left = 16, Top = 500, Width = 200, Text = "오늘은 보지 않기", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
 
     public StartupSummaryForm(WorkSupportApiClient api)
     {
@@ -31,16 +43,19 @@ public sealed class StartupSummaryForm : Form
         Text = "오늘의 알림";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(492, 536);
+        MinimumSize = new Size(640, 480);
 
         _content.BackColor = UiTheme.Background;
         UiTheme.StyleSecondaryButton(_closeButton);
+        _dontShowTodayBox.ForeColor = UiTheme.TextSecondary;
 
         Controls.Add(_content);
+        Controls.Add(_dontShowTodayBox);
         Controls.Add(_closeButton);
         _closeButton.Click += (_, _) => Close();
 

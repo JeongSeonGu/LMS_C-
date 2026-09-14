@@ -57,6 +57,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         _connectionStatusItem = new ToolStripMenuItem("연결 상태: 연결 중...") { Enabled = false };
         menu.Items.Add(_connectionStatusItem);
+        menu.Items.Add(new ToolStripMenuItem("교무업무 페이지", null, OnWorkSupportPageClicked));
         menu.Items.Add(new ToolStripSeparator());
 
         var scheduleMenu = new ToolStripMenuItem("학사 일정");
@@ -173,6 +174,27 @@ public sealed class TrayApplicationContext : ApplicationContext
         });
     }
 
+    private void OnWorkSupportPageClicked(object? sender, EventArgs e)
+    {
+        var url = _settings.WorkSupportPageUrl;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            MessageBox.Show("교무업무 페이지 주소가 설정되어 있지 않습니다. 환경설정 > 네트워크에서 설정해주세요.",
+                "교무업무 페이지", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"교무업무 페이지를 열 수 없습니다: {ex.Message}",
+                "교무업무 페이지", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
     private void OnLoginClicked(object? sender, EventArgs e)
     {
         using var form = new LoginForm(_api, _session, _settings.SavedLoginId);
@@ -193,10 +215,17 @@ public sealed class TrayApplicationContext : ApplicationContext
         SettingsStore.Save(_settings);
         _scheduleOverlayService.ApplySettings();
 
-        if (_settings.ShowStartupNoticeModal)
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        if (_settings.ShowStartupNoticeModal && _settings.StartupNoticeSuppressedDate != today)
         {
             using var summary = new StartupSummaryForm(_api);
             summary.ShowDialog();
+
+            if (summary.SuppressToday)
+            {
+                _settings.StartupNoticeSuppressedDate = today;
+                SettingsStore.Save(_settings);
+            }
         }
     }
 

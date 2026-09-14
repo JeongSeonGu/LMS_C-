@@ -26,22 +26,35 @@ public sealed class EventDetailForm : Form
         Left = 16, Top = 46, Width = 308, Height = 150,
         Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical,
         BorderStyle = BorderStyle.None, BackColor = UiTheme.Background,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _editButton = new() { Left = 16, Top = 208, Width = 80, Text = "수정" };
-    private readonly Button _deleteButton = new() { Left = 104, Top = 208, Width = 80, Text = "삭제" };
-    private readonly Button _closeButton = new() { Left = 244, Top = 208, Width = 80, Text = "닫기" };
+    private readonly Button _editButton = new()
+    {
+        Left = 16, Top = 208, Width = 80, Text = "수정", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
+
+    private readonly Button _deleteButton = new()
+    {
+        Left = 104, Top = 208, Width = 80, Text = "삭제", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
+
+    private readonly Button _closeButton = new()
+    {
+        Left = 244, Top = 208, Width = 80, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     public EventDetailForm(string title, string bodyText, bool canEdit)
     {
         Text = "일정 상세";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(340, 248);
+        MinimumSize = new Size(640, 480);
 
         _titleLabel.Text = title;
         _bodyBox.Text = bodyText;

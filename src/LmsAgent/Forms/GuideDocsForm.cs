@@ -18,16 +18,31 @@ public sealed class GuideDocsForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
-    private readonly TreeView _tree = new() { Left = 20, Top = 20, Width = 300, Height = 400 };
+    private readonly TreeView _tree = new()
+    {
+        Left = 20, Top = 20, Width = 300, Height = 400,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom,
+    };
 
     private readonly Label _selectedLabel = new()
     {
-        Left = 336, Top = 20, Width = 260, Height = 60,
+        Left = 336, Top = 20, Width = 260, Height = 60, Anchor = AnchorStyles.Top | AnchorStyles.Right,
     };
 
-    private readonly Button _downloadButton = new() { Left = 336, Top = 90, Width = 110, Text = "다운로드...", Enabled = false };
-    private readonly Button _openButton = new() { Left = 336, Top = 126, Width = 110, Text = "열어보기", Enabled = false };
-    private readonly Button _closeButton = new() { Left = 336, Top = 400, Width = 110, Text = "닫기" };
+    private readonly Button _downloadButton = new()
+    {
+        Left = 336, Top = 90, Width = 110, Text = "다운로드...", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+    };
+
+    private readonly Button _openButton = new()
+    {
+        Left = 336, Top = 126, Width = 110, Text = "열어보기", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Right,
+    };
+
+    private readonly Button _closeButton = new()
+    {
+        Left = 336, Top = 400, Width = 110, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     private GuideDoc? _selectedDoc;
 
@@ -38,11 +53,12 @@ public sealed class GuideDocsForm : Form
         Text = "길라잡이 조회";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(616, 440);
+        MinimumSize = new Size(640, 480);
 
         UiTheme.StyleTree(_tree);
         UiTheme.StyleSubHeaderLabel(_selectedLabel);

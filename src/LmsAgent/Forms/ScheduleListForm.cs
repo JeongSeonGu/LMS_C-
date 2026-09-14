@@ -27,14 +27,22 @@ public sealed class ScheduleListForm : Form
         Font = new Font("맑은 고딕", 10F, FontStyle.Bold),
     };
     private readonly Button _nextMonthButton = new() { Left = 255, Top = 15, Width = 30, Text = ">" };
-    private readonly Button _addButton = new() { Left = 560, Top = 15, Width = 90, Text = "새 일정..." };
+
+    private readonly Button _addButton = new()
+    {
+        Left = 560, Top = 15, Width = 90, Text = "새 일정...", Anchor = AnchorStyles.Top | AnchorStyles.Right,
+    };
 
     private readonly MonthCalendarView _calendar = new()
     {
         Left = 20, Top = 50, Width = 630, Height = 460,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _closeButton = new() { Left = 560, Top = 520, Width = 90, Text = "닫기" };
+    private readonly Button _closeButton = new()
+    {
+        Left = 560, Top = 520, Width = 90, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     public ScheduleListForm(WorkSupportApiClient api, SessionManager session)
     {
@@ -44,11 +52,12 @@ public sealed class ScheduleListForm : Form
         Text = "학사 일정 목록";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(670, 560);
+        ClientSize = new Size(900, 700);
+        MinimumSize = new Size(680, 520);
 
         Controls.Add(_prevMonthButton);
         Controls.Add(_todayButton);

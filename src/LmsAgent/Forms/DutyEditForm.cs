@@ -49,18 +49,29 @@ public sealed class DutyEditForm : Form
         Left = 246, Top = 158, Width = 110, Format = DateTimePickerFormat.Time, ShowUpDown = true,
     };
 
+    private readonly Label _timeLabel = new() { Left = 20, Top = 161, Width = 90, Text = "시간" };
+
     private readonly TextBox _noteBox = new()
     {
         Left = 20, Top = 228, Width = 350, Height = 90,
         Multiline = true, ScrollBars = ScrollBars.Vertical,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _saveButton = new() { Left = 190, Top = 330, Width = 80 };
-    private readonly Button _cancelButton = new() { Left = 280, Top = 330, Width = 90, Text = "취소" };
+    private readonly Button _saveButton = new()
+    {
+        Left = 190, Top = 330, Width = 80, Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
+
+    private readonly Button _cancelButton = new()
+    {
+        Left = 280, Top = 330, Width = 90, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     private readonly Label _statusLabel = new()
     {
         Left = 20, Top = 364, Width = 350, Height = 30, ForeColor = UiTheme.Danger,
+        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
     };
 
     public DutyEditForm(WorkSupportApiClient api, DutyRecord? editing = null, DateTime? initialDate = null)
@@ -71,16 +82,17 @@ public sealed class DutyEditForm : Form
         Text = editing is null ? "복무사항 등록" : "복무사항 수정";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(390, 404);
+        MinimumSize = new Size(640, 480);
 
         Controls.Add(new Label { Left = 20, Top = 23, Width = 90, Text = "대상" });
         Controls.Add(new Label { Left = 20, Top = 58, Width = 90, Text = "구분" });
         Controls.Add(new Label { Left = 20, Top = 93, Width = 90, Text = "날짜" });
-        Controls.Add(new Label { Left = 20, Top = 161, Width = 90, Text = "시간" });
+        Controls.Add(_timeLabel);
         Controls.Add(new Label { Left = 20, Top = 231, Width = 90, Text = "메모" });
         Controls.Add(_positionBox);
         Controls.Add(_dutyTypeBox);
@@ -140,6 +152,7 @@ public sealed class DutyEditForm : Form
     private void ApplyAllDayVisibility()
     {
         var allDay = _allDayBox.Checked;
+        _timeLabel.Visible = !allDay;
         _startTimePicker.Visible = !allDay;
         _endTimePicker.Visible = !allDay;
         _timeRangeSeparator.Visible = !allDay;

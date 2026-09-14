@@ -25,8 +25,15 @@ public sealed class UserInfoForm : Form
     private readonly TextBox _currentPwBox = new() { Left = 120, Top = 160, Width = 220, PasswordChar = '*' };
     private readonly TextBox _newPwBox = new() { Left = 120, Top = 190, Width = 220, PasswordChar = '*' };
 
-    private readonly Button _saveButton = new() { Left = 150, Top = 225, Width = 90, Text = "저장" };
-    private readonly Button _closeButton = new() { Left = 250, Top = 225, Width = 90, Text = "닫기" };
+    private readonly Button _saveButton = new()
+    {
+        Left = 150, Top = 225, Width = 90, Text = "저장", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
+
+    private readonly Button _closeButton = new()
+    {
+        Left = 250, Top = 225, Width = 90, Text = "닫기", Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
+    };
 
     private readonly Label _statusLabel = new()
     {
@@ -35,6 +42,7 @@ public sealed class UserInfoForm : Form
         Width = 320,
         Height = 40,
         ForeColor = UiTheme.Danger,
+        Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
     };
 
     public UserInfoForm(WorkSupportApiClient api, SessionManager session)
@@ -45,11 +53,12 @@ public sealed class UserInfoForm : Form
         Text = "사용자 정보 수정";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(360, 305);
+        MinimumSize = new Size(640, 480);
 
         Controls.Add(new Label { Left = 20, Top = 20, Width = 90, Text = "이름" });
         Controls.Add(new Label { Left = 20, Top = 45, Width = 90, Text = "직위" });

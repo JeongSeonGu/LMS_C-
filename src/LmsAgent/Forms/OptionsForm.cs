@@ -22,6 +22,7 @@ public sealed class OptionsForm : Form
         Width = 140,
         Height = 360,
         HideSelection = false,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Bottom,
     };
 
     private readonly Panel _pageHost = new()
@@ -31,11 +32,23 @@ public sealed class OptionsForm : Form
         Width = 420,
         Height = 360,
         BorderStyle = BorderStyle.FixedSingle,
+        Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
     };
 
-    private readonly Button _okButton = new() { Left = 336, Top = 384, Width = 80, Text = "확인" };
-    private readonly Button _cancelButton = new() { Left = 422, Top = 384, Width = 80, Text = "취소" };
-    private readonly Button _applyButton = new() { Left = 508, Top = 384, Width = 80, Text = "적용" };
+    private readonly Button _okButton = new()
+    {
+        Left = 336, Top = 384, Width = 80, Text = "확인", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
+
+    private readonly Button _cancelButton = new()
+    {
+        Left = 422, Top = 384, Width = 80, Text = "취소", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
+
+    private readonly Button _applyButton = new()
+    {
+        Left = 508, Top = 384, Width = 80, Text = "적용", Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
+    };
 
     public OptionsForm(AppSettings settings)
     {
@@ -44,11 +57,12 @@ public sealed class OptionsForm : Form
         Text = "환경설정";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
+        FormBorderStyle = FormBorderStyle.Sizable;
+        MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(600, 420);
+        MinimumSize = new Size(640, 480);
 
         _pages = new IOptionsPage[]
         {
