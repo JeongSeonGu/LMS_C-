@@ -40,6 +40,54 @@ public static class UiTheme
     {
         form.BackColor = Background;
         form.Font = BaseFont;
+
+        // Modern Flat UI: 폼이 실제로 뜨는 시점(모든 Controls.Add가 끝난 뒤)에 한 번,
+        // 자식 컨트롤 전체를 훑어 표준 컨트롤의 3D 스타일을 평평하게 통일합니다.
+        // 버튼/그리드/트리 등 이미 개별적으로 스타일을 입힌 컨트롤은 건드리지 않습니다.
+        form.Load += (_, _) => ApplyFlatStyle(form);
+    }
+
+    /// <summary>
+    /// 자식 컨트롤을 재귀적으로 훑으며 ComboBox/TextBox 등 표준 컨트롤의 기본 3D 테두리를
+    /// 평평한 스타일로 바꿉니다. <see cref="ApplyForm"/>이 폼 로드 시 자동으로 호출합니다.
+    /// </summary>
+    public static void ApplyFlatStyle(Control root)
+    {
+        foreach (Control control in root.Controls)
+        {
+            switch (control)
+            {
+                case ComboBox comboBox:
+                    comboBox.FlatStyle = FlatStyle.Flat;
+                    break;
+
+                case TextBox textBox when textBox.BorderStyle != BorderStyle.None:
+                    textBox.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+
+                case NumericUpDown numericUpDown:
+                    numericUpDown.BorderStyle = BorderStyle.FixedSingle;
+                    break;
+
+                case CheckBox checkBox:
+                    checkBox.FlatStyle = FlatStyle.Flat;
+                    checkBox.FlatAppearance.BorderSize = 1;
+                    checkBox.FlatAppearance.BorderColor = Sky;
+                    checkBox.FlatAppearance.CheckedBackColor = Orange;
+                    break;
+
+                case RadioButton radioButton:
+                    radioButton.FlatStyle = FlatStyle.Flat;
+                    radioButton.FlatAppearance.BorderSize = 0;
+                    radioButton.FlatAppearance.CheckedBackColor = OrangeLight;
+                    break;
+            }
+
+            if (control.HasChildren)
+            {
+                ApplyFlatStyle(control);
+            }
+        }
     }
 
     /// <summary>등록/저장/로그인/확인 등 화면의 대표 액션 버튼(오렌지, 채움).</summary>
