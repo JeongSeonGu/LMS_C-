@@ -17,8 +17,9 @@ public sealed class SharedAccountsForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
     private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 20, 20, 0) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly DataGridView _grid = new()
     {
@@ -57,8 +58,12 @@ public sealed class SharedAccountsForm : Form
 
         _contentPanel.Controls.Add(_grid);
         _bottomPanel.Controls.Add(_closeButton);
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_contentPanel, 0, 0);
+        _root.Controls.Add(_bottomPanel, 0, 1);
+        Controls.Add(_root);
 
         UiTheme.StyleSecondaryButton(_closeButton);
 

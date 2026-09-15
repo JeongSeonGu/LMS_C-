@@ -18,10 +18,11 @@ public sealed class GuideDocsForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
-    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 20, 20, 0) };
-    private readonly Panel _treePanel = new() { Dock = DockStyle.Left, Width = 300, Padding = new Padding(0, 0, 16, 0) };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+    private readonly TableLayoutPanel _contentRow = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1, Padding = new Padding(20, 20, 20, 0) };
+    private readonly Panel _treePanel = new() { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 16, 0) };
     private readonly Panel _detailPanel = new() { Dock = DockStyle.Fill };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly TreeView _tree = new() { Dock = DockStyle.Fill };
 
@@ -68,12 +69,21 @@ public sealed class GuideDocsForm : Form
         _detailPanel.Controls.Add(_selectedLabel);
         _detailPanel.Controls.Add(_downloadButton);
         _detailPanel.Controls.Add(_openButton);
-        _contentPanel.Controls.Add(_treePanel);
-        _contentPanel.Controls.Add(_detailPanel);
+
+        _contentRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300f));
+        _contentRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        _contentRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _contentRow.Controls.Add(_treePanel, 0, 0);
+        _contentRow.Controls.Add(_detailPanel, 1, 0);
+
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_contentRow, 0, 0);
+        _root.Controls.Add(_bottomPanel, 0, 1);
+
+        Controls.Add(_root);
 
         _tree.AfterSelect += OnTreeSelect;
         _downloadButton.Click += async (_, _) => await DownloadAsync(openAfter: false);

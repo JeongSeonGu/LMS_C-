@@ -16,9 +16,12 @@ public sealed class RequestsForm : Form
     private readonly WorkSupportApiClient _api;
     private RequestMeta _meta = new();
 
-    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    // TableLayoutPanel을 쓰는 이유: 행 높이를 RowStyles로 명시해서 Controls 추가 순서와
+    // 무관하게 항상 같은 자리(위 툴바/가운데 목록/아래 버튼)에 배치되도록 하기 위함입니다.
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Fill };
     private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 12) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly ComboBox _scopeBox = new()
     {
@@ -91,9 +94,14 @@ public sealed class RequestsForm : Form
         _bottomPanel.Controls.Add(_refreshButton);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_topPanel);
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_topPanel, 0, 0);
+        _root.Controls.Add(_contentPanel, 0, 1);
+        _root.Controls.Add(_bottomPanel, 0, 2);
+
+        Controls.Add(_root);
 
         _scopeBox.SelectedIndexChanged += async (_, _) => await LoadAsync();
         _addButton.Click += OnAddClicked;

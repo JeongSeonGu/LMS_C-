@@ -18,9 +18,10 @@ public sealed class MeetingsForm : Form
     private string? _appscriptUrl;
     private string? _sheetViewUrl;
 
-    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Fill };
     private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly ComboBox _sourceBox = new()
     {
@@ -84,9 +85,14 @@ public sealed class MeetingsForm : Form
         _bottomPanel.Controls.Add(_guideLabel);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_topPanel);
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_topPanel, 0, 0);
+        _root.Controls.Add(_contentPanel, 0, 1);
+        _root.Controls.Add(_bottomPanel, 0, 2);
+
+        Controls.Add(_root);
 
         _sourceBox.SelectedIndexChanged += async (_, _) => await LoadAsync();
         _registerButton.Click += (_, _) => OpenUrl(_appscriptUrl, "안건 등록 링크가 설정되어 있지 않습니다.");

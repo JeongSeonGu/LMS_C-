@@ -19,8 +19,9 @@ public sealed class StartupSummaryForm : Form
     /// <summary>체크된 채로 닫히면 오늘 하루는 로그인해도 이 알림을 다시 띄우지 않습니다.</summary>
     public bool SuppressToday => _dontShowTodayBox.Checked;
 
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
     private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 8) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly FlowLayoutPanel _content = new()
     {
@@ -60,8 +61,12 @@ public sealed class StartupSummaryForm : Form
         _bottomPanel.Controls.Add(_dontShowTodayBox);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_contentPanel, 0, 0);
+        _root.Controls.Add(_bottomPanel, 0, 1);
+
+        Controls.Add(_root);
         _closeButton.Click += (_, _) => Close();
 
         Load += async (_, _) => await LoadAsync();

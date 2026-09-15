@@ -8,9 +8,10 @@ namespace LmsAgent.Forms;
 /// <summary>서버가 보낸 작업 요청을 사용자에게 보여주고 수락/거절을 입력받는 창입니다.</summary>
 public sealed class TaskRequestForm : Form
 {
-    private readonly Panel _titlePanel = new() { Dock = DockStyle.Top, Height = 40, Padding = new Padding(20, 20, 20, 0) };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly Panel _titlePanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 20, 20, 0) };
     private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 8, 20, 8) };
-    private readonly Panel _buttonPanel = new() { Dock = DockStyle.Bottom, Height = 56 };
+    private readonly Panel _buttonPanel = new() { Dock = DockStyle.Fill };
 
     private readonly Label _titleLabel = new()
     {
@@ -55,9 +56,14 @@ public sealed class TaskRequestForm : Form
         _buttonPanel.Controls.Add(_acceptButton);
         _buttonPanel.Controls.Add(_rejectButton);
 
-        Controls.Add(_titlePanel);
-        Controls.Add(_buttonPanel);
-        Controls.Add(_bodyPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 40f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56f));
+        _root.Controls.Add(_titlePanel, 0, 0);
+        _root.Controls.Add(_bodyPanel, 0, 1);
+        _root.Controls.Add(_buttonPanel, 0, 2);
+
+        Controls.Add(_root);
 
         _acceptButton.Click += (_, _) =>
         {

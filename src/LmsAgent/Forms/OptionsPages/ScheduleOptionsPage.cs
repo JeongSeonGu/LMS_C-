@@ -34,10 +34,10 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
 
     private readonly Label _opacityValueLabel = new() { Left = 335, Top = 122, Width = 50 };
 
-    private readonly CheckBox _reminder10Box = new() { Left = 130, Top = 222, Width = 110, Text = "10분 전" };
-    private readonly CheckBox _reminder20Box = new() { Left = 250, Top = 222, Width = 110, Text = "20분 전" };
-    private readonly CheckBox _reminder30Box = new() { Left = 130, Top = 250, Width = 110, Text = "30분 전" };
-    private readonly CheckBox _reminder60Box = new() { Left = 250, Top = 250, Width = 110, Text = "1시간 전" };
+    private readonly CheckBox _reminder10Box = new() { Left = 130, Top = 242, Width = 110, Text = "10분 전" };
+    private readonly CheckBox _reminder20Box = new() { Left = 250, Top = 242, Width = 110, Text = "20분 전" };
+    private readonly CheckBox _reminder30Box = new() { Left = 130, Top = 270, Width = 110, Text = "30분 전" };
+    private readonly CheckBox _reminder60Box = new() { Left = 250, Top = 270, Width = 110, Text = "1시간 전" };
 
     public string CategoryName => "학사일정";
 
@@ -70,7 +70,9 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
 
-        Controls.Add(new Label { Left = 20, Top = 195, Width = 200, Text = "일정 시작 알림" });
+        var reminderHeader = new Label { Left = 20, Top = 217, Width = 200, Text = "일정 시작 알림" };
+        UiTheme.StyleSubHeaderLabel(reminderHeader);
+        Controls.Add(reminderHeader);
         Controls.Add(_reminder10Box);
         Controls.Add(_reminder20Box);
         Controls.Add(_reminder30Box);
@@ -78,7 +80,7 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
 
         var reminderHint = new Label
         {
-            Left = 20, Top = 280, Width = 380, Height = 20,
+            Left = 20, Top = 300, Width = 380, Height = 20,
             Text = "체크한 시간만큼 일정 시작 전에 화면 알림을 띄웁니다.",
         };
         UiTheme.StyleHintLabel(reminderHint);

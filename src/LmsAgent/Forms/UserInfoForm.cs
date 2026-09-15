@@ -16,7 +16,8 @@ public sealed class UserInfoForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly SessionManager _session;
 
-    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 258, Padding = new Padding(20, 12, 20, 0) };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 12, 20, 0) };
     private readonly Panel _statusPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 12) };
 
     private readonly Label _nameValueLabel = new() { Left = 100, Top = 8, Width = 220 };
@@ -72,8 +73,12 @@ public sealed class UserInfoForm : Form
         _topPanel.Controls.Add(_closeButton);
         _statusPanel.Controls.Add(_statusLabel);
 
-        Controls.Add(_topPanel);
-        Controls.Add(_statusPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 258f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.Controls.Add(_topPanel, 0, 0);
+        _root.Controls.Add(_statusPanel, 0, 1);
+
+        Controls.Add(_root);
 
         UiTheme.StylePrimaryButton(_saveButton);
         UiTheme.StyleSecondaryButton(_closeButton);

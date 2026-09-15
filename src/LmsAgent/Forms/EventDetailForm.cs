@@ -16,9 +16,10 @@ public sealed class EventDetailForm : Form
 
     public DetailAction SelectedAction { get; private set; } = DetailAction.None;
 
-    private readonly Panel _titlePanel = new() { Dock = DockStyle.Top, Height = 46, Padding = new Padding(16, 16, 16, 0) };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly Panel _titlePanel = new() { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 0) };
     private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(16, 0, 16, 8) };
-    private readonly Panel _buttonPanel = new() { Dock = DockStyle.Bottom, Height = 48 };
+    private readonly Panel _buttonPanel = new() { Dock = DockStyle.Fill };
 
     private readonly Label _titleLabel = new()
     {
@@ -63,9 +64,14 @@ public sealed class EventDetailForm : Form
         _buttonPanel.Controls.Add(_deleteButton);
         _buttonPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_titlePanel);
-        Controls.Add(_buttonPanel);
-        Controls.Add(_bodyPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 46f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48f));
+        _root.Controls.Add(_titlePanel, 0, 0);
+        _root.Controls.Add(_bodyPanel, 0, 1);
+        _root.Controls.Add(_buttonPanel, 0, 2);
+
+        Controls.Add(_root);
 
         CancelButton = _closeButton;
 

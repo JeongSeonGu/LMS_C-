@@ -15,13 +15,18 @@ public sealed class OptionsForm : Form
     private readonly AppSettings _settings;
     private readonly IOptionsPage[] _pages;
 
-    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(12, 12, 12, 0) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 52 };
+    // TableLayoutPanel을 쓰는 이유: Panel + Dock(Top/Bottom/Left/Fill) 조합은 어느 컨트롤을
+    // 먼저 Controls에 추가하느냐에 따라 레이아웃 우선순위가 달라지는데(z-order 의존),
+    // 이 프로젝트에서 그 순서를 두 번이나 잘못 적용해 확인/취소/적용 버튼이 안 보이는 사고가
+    // 반복됐습니다. TableLayoutPanel은 행/열 크기를 RowStyles/ColumnStyles로 명시적으로
+    // 지정하므로 추가 순서와 무관하게 항상 같은 자리에 배치됩니다.
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+    private readonly TableLayoutPanel _contentRow = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly TreeView _tree = new()
     {
-        Dock = DockStyle.Left,
-        Width = 140,
+        Dock = DockStyle.Fill,
         HideSelection = false,
     };
 
@@ -82,14 +87,30 @@ public sealed class OptionsForm : Form
             _tree.Nodes.Add(new TreeNode(page.CategoryName) { Tag = page });
         }
 
-        _contentPanel.Controls.Add(_tree);
-        _contentPanel.Controls.Add(_pageHost);
+        var treeHost = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 12, 0, 12) };
+        treeHost.Controls.Add(_tree);
+
+        var pageHostWrapper = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 12, 12, 12) };
+        pageHostWrapper.Controls.Add(_pageHost);
+
+        _contentRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152f));
+        _contentRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        _contentRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _contentRow.Controls.Add(treeHost, 0, 0);
+        _contentRow.Controls.Add(pageHostWrapper, 1, 0);
+
         _bottomPanel.Controls.Add(_okButton);
         _bottomPanel.Controls.Add(_cancelButton);
         _bottomPanel.Controls.Add(_applyButton);
+        var bottomHost = new Panel { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 12, 0) };
+        bottomHost.Controls.Add(_bottomPanel);
 
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52f));
+        _root.Controls.Add(_contentRow, 0, 0);
+        _root.Controls.Add(bottomHost, 0, 1);
+
+        Controls.Add(_root);
 
         AcceptButton = _okButton;
         CancelButton = _cancelButton;

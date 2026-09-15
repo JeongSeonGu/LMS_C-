@@ -19,9 +19,10 @@ public sealed class DutyRegisterForm : Form
     private readonly WorkSupportApiClient _api;
     private bool _canManage;
 
-    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 50 };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Fill };
     private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly Button _prevMonthButton = new() { Left = 20, Top = 13, Width = 30, Text = "<" };
     private readonly Button _todayButton = new() { Left = 55, Top = 13, Width = 55, Text = "오늘" };
@@ -106,9 +107,14 @@ public sealed class DutyRegisterForm : Form
         _bottomPanel.Controls.Add(_hintLabel);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_topPanel);
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_topPanel, 0, 0);
+        _root.Controls.Add(_contentPanel, 0, 1);
+        _root.Controls.Add(_bottomPanel, 0, 2);
+
+        Controls.Add(_root);
 
         _prevMonthButton.Click += (_, _) => ChangeMonth(-1);
         _nextMonthButton.Click += (_, _) => ChangeMonth(1);

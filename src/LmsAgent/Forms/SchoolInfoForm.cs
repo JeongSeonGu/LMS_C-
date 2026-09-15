@@ -15,11 +15,12 @@ public sealed class SchoolInfoForm : Form
 {
     private readonly WorkSupportApiClient _api;
 
-    private readonly Panel _headerPanel = new() { Dock = DockStyle.Top, Height = 90 };
-    private readonly Panel _contentPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 10, 20, 0) };
-    private readonly Panel _studentGridPanel = new() { Dock = DockStyle.Left, Width = 280, Padding = new Padding(0, 0, 10, 10) };
-    private readonly Panel _infoPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(0, 0, 0, 10) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 50 };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly TableLayoutPanel _contentRow = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
+    private readonly Panel _headerPanel = new() { Dock = DockStyle.Fill };
+    private readonly Panel _studentGridPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 10, 10, 10) };
+    private readonly Panel _infoPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(0, 10, 20, 10) };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly PictureBox _logoBox = new()
     {
@@ -73,13 +74,23 @@ public sealed class SchoolInfoForm : Form
         _headerPanel.Controls.Add(_badgeLabel);
         _studentGridPanel.Controls.Add(_studentGrid);
         _infoPanel.Controls.Add(_infoLabel);
-        _contentPanel.Controls.Add(_studentGridPanel);
-        _contentPanel.Controls.Add(_infoPanel);
+
+        _contentRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280f));
+        _contentRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        _contentRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _contentRow.Controls.Add(_studentGridPanel, 0, 0);
+        _contentRow.Controls.Add(_infoPanel, 1, 0);
+
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_headerPanel);
-        Controls.Add(_bottomPanel);
-        Controls.Add(_contentPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 90f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        _root.Controls.Add(_headerPanel, 0, 0);
+        _root.Controls.Add(_contentRow, 0, 1);
+        _root.Controls.Add(_bottomPanel, 0, 2);
+
+        Controls.Add(_root);
 
         UiTheme.StyleSecondaryButton(_closeButton);
 

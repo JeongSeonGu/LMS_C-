@@ -13,9 +13,10 @@ public sealed class RequestEditForm : Form
     private readonly WorkSupportApiClient _api;
     private readonly RequestDetail? _editing;
 
-    private readonly Panel _topPanel = new() { Dock = DockStyle.Top, Height = 170, Padding = new Padding(20, 12, 20, 0) };
+    private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+    private readonly Panel _topPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 12, 20, 0) };
     private readonly Panel _bodyPanel = new() { Dock = DockStyle.Fill, Padding = new Padding(20, 0, 20, 8) };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Bottom, Height = 78 };
+    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
 
     private readonly TextBox _titleBox = new() { Left = 90, Top = 8, Width = 280 };
 
@@ -81,9 +82,14 @@ public sealed class RequestEditForm : Form
         _bottomPanel.Controls.Add(_cancelButton);
         _bottomPanel.Controls.Add(_statusLabel);
 
-        Controls.Add(_topPanel);
-        Controls.Add(_bottomPanel);
-        Controls.Add(_bodyPanel);
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 170f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 78f));
+        _root.Controls.Add(_topPanel, 0, 0);
+        _root.Controls.Add(_bodyPanel, 0, 1);
+        _root.Controls.Add(_bottomPanel, 0, 2);
+
+        Controls.Add(_root);
 
         _saveButton.Text = editing is null ? "등록" : "수정";
 
