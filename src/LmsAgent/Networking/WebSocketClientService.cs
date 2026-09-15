@@ -51,9 +51,6 @@ public sealed class WebSocketClientService : IAsyncDisposable
         {
             Reconnection = true,
             ReconnectionAttempts = int.MaxValue,
-            ReconnectionDelay = 2000,
-            ReconnectionDelayMax = 30000,
-            EIO = EngineIO.V4,
         });
 
         client.OnConnected += async (_, _) =>
@@ -64,11 +61,14 @@ public sealed class WebSocketClientService : IAsyncDisposable
                 // ClassVote 등 다른 서비스들처럼, 연결 직후 그룹 참가용 이벤트를 한 번 보낸다.
                 // Add_UserList(data, io, socket.id, "Connection_LMS_WindowAgent")가 이 payload를
                 // userList에 등록하므로, 실제 Add_UserList 구현이 요구하는 필드명에 맞춰 조정하세요.
-                await client.EmitAsync(JoinEvent, new
+                await client.EmitAsync(JoinEvent, new object[]
                 {
-                    schoolName = _settings.SchoolName,
-                    licenseKey = _settings.LicenseKey,
-                    deviceId = _settings.DeviceId,
+                    new
+                    {
+                        schoolName = _settings.SchoolName,
+                        licenseKey = _settings.LicenseKey,
+                        deviceId = _settings.DeviceId,
+                    },
                 });
             }
             catch (Exception ex)
@@ -87,12 +87,12 @@ public sealed class WebSocketClientService : IAsyncDisposable
 
         client.OnError += (_, error) => LogMessage?.Invoke($"웹소켓 오류: {error}");
 
-        client.On(MessageEvent, response =>
+        client.On(MessageEvent, async response =>
         {
             WsEnvelope? envelope;
             try
             {
-                envelope = response.GetValue<WsEnvelope>();
+                envelope = response.GetValue<WsEnvelope>(0);
             }
             catch (JsonException)
             {
@@ -104,6 +104,8 @@ public sealed class WebSocketClientService : IAsyncDisposable
             {
                 Dispatch(envelope);
             }
+
+            await Task.CompletedTask;
         });
 
         _client = client;
@@ -192,7 +194,7 @@ public sealed class WebSocketClientService : IAsyncDisposable
             throw new InvalidOperationException("서버에 연결되어 있지 않습니다.");
         }
 
-        await client.EmitAsync(MessageEvent, envelope).ConfigureAwait(false);
+        await client.EmitAsync(MessageEvent, new object[] { envelope }).ConfigureAwait(false);
     }
 
     private void SetState(ConnectionState state)
