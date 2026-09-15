@@ -68,12 +68,12 @@ public sealed class GuideDocsForm : Form
         _detailPanel.Controls.Add(_selectedLabel);
         _detailPanel.Controls.Add(_downloadButton);
         _detailPanel.Controls.Add(_openButton);
-        _contentPanel.Controls.Add(_detailPanel);
         _contentPanel.Controls.Add(_treePanel);
+        _contentPanel.Controls.Add(_detailPanel);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         _tree.AfterSelect += OnTreeSelect;
         _downloadButton.Click += async (_, _) => await DownloadAsync(openAfter: false);

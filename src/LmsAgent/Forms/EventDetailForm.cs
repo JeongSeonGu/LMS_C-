@@ -63,9 +63,9 @@ public sealed class EventDetailForm : Form
         _buttonPanel.Controls.Add(_deleteButton);
         _buttonPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_bodyPanel);
         Controls.Add(_titlePanel);
         Controls.Add(_buttonPanel);
+        Controls.Add(_bodyPanel);
 
         CancelButton = _closeButton;
 

@@ -60,8 +60,8 @@ public sealed class StartupSummaryForm : Form
         _bottomPanel.Controls.Add(_dontShowTodayBox);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
         _closeButton.Click += (_, _) => Close();
 
         Load += async (_, _) => await LoadAsync();

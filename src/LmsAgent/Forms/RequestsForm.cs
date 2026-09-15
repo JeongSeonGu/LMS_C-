@@ -91,9 +91,9 @@ public sealed class RequestsForm : Form
         _bottomPanel.Controls.Add(_refreshButton);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_topPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         _scopeBox.SelectedIndexChanged += async (_, _) => await LoadAsync();
         _addButton.Click += OnAddClicked;

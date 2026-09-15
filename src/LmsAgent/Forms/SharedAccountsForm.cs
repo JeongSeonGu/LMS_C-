@@ -57,8 +57,8 @@ public sealed class SharedAccountsForm : Form
 
         _contentPanel.Controls.Add(_grid);
         _bottomPanel.Controls.Add(_closeButton);
-        Controls.Add(_contentPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         UiTheme.StyleSecondaryButton(_closeButton);
 

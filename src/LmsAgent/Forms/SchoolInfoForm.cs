@@ -73,13 +73,13 @@ public sealed class SchoolInfoForm : Form
         _headerPanel.Controls.Add(_badgeLabel);
         _studentGridPanel.Controls.Add(_studentGrid);
         _infoPanel.Controls.Add(_infoLabel);
-        _contentPanel.Controls.Add(_infoPanel);
         _contentPanel.Controls.Add(_studentGridPanel);
+        _contentPanel.Controls.Add(_infoPanel);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_headerPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         UiTheme.StyleSecondaryButton(_closeButton);
 

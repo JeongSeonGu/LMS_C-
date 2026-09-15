@@ -63,8 +63,8 @@ public sealed class LoginForm : Form
         _topPanel.Controls.Add(_cancelButton);
         _statusPanel.Controls.Add(_statusLabel);
 
-        Controls.Add(_statusPanel);
         Controls.Add(_topPanel);
+        Controls.Add(_statusPanel);
 
         if (!string.IsNullOrWhiteSpace(savedLoginId))
         {

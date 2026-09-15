@@ -82,14 +82,14 @@ public sealed class OptionsForm : Form
             _tree.Nodes.Add(new TreeNode(page.CategoryName) { Tag = page });
         }
 
-        _contentPanel.Controls.Add(_pageHost);
         _contentPanel.Controls.Add(_tree);
+        _contentPanel.Controls.Add(_pageHost);
         _bottomPanel.Controls.Add(_okButton);
         _bottomPanel.Controls.Add(_cancelButton);
         _bottomPanel.Controls.Add(_applyButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         AcceptButton = _okButton;
         CancelButton = _cancelButton;

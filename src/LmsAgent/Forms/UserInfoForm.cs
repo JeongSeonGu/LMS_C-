@@ -72,8 +72,8 @@ public sealed class UserInfoForm : Form
         _topPanel.Controls.Add(_closeButton);
         _statusPanel.Controls.Add(_statusLabel);
 
-        Controls.Add(_statusPanel);
         Controls.Add(_topPanel);
+        Controls.Add(_statusPanel);
 
         UiTheme.StylePrimaryButton(_saveButton);
         UiTheme.StyleSecondaryButton(_closeButton);

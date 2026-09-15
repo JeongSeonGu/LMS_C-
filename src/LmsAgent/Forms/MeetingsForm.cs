@@ -84,9 +84,9 @@ public sealed class MeetingsForm : Form
         _bottomPanel.Controls.Add(_guideLabel);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_topPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         _sourceBox.SelectedIndexChanged += async (_, _) => await LoadAsync();
         _registerButton.Click += (_, _) => OpenUrl(_appscriptUrl, "안건 등록 링크가 설정되어 있지 않습니다.");

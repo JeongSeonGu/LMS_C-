@@ -55,9 +55,9 @@ public sealed class TaskRequestForm : Form
         _buttonPanel.Controls.Add(_acceptButton);
         _buttonPanel.Controls.Add(_rejectButton);
 
-        Controls.Add(_bodyPanel);
         Controls.Add(_titlePanel);
         Controls.Add(_buttonPanel);
+        Controls.Add(_bodyPanel);
 
         _acceptButton.Click += (_, _) =>
         {

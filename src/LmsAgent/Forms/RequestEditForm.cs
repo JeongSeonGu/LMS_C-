@@ -81,9 +81,9 @@ public sealed class RequestEditForm : Form
         _bottomPanel.Controls.Add(_cancelButton);
         _bottomPanel.Controls.Add(_statusLabel);
 
-        Controls.Add(_bodyPanel);
         Controls.Add(_topPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_bodyPanel);
 
         _saveButton.Text = editing is null ? "등록" : "수정";
 

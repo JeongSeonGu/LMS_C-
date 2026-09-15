@@ -67,9 +67,9 @@ public sealed class ScheduleListForm : Form
         _contentPanel.Controls.Add(_calendar);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_topPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         UiTheme.StyleFlatToolButton(_prevMonthButton);
         UiTheme.StyleFlatToolButton(_todayButton);

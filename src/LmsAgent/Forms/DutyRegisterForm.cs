@@ -106,9 +106,9 @@ public sealed class DutyRegisterForm : Form
         _bottomPanel.Controls.Add(_hintLabel);
         _bottomPanel.Controls.Add(_closeButton);
 
-        Controls.Add(_contentPanel);
         Controls.Add(_topPanel);
         Controls.Add(_bottomPanel);
+        Controls.Add(_contentPanel);
 
         _prevMonthButton.Click += (_, _) => ChangeMonth(-1);
         _nextMonthButton.Click += (_, _) => ChangeMonth(1);
