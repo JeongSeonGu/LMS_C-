@@ -130,7 +130,13 @@ public sealed class OptionsForm : Form
                 Close();
             }
         };
-        _applyButton.Click += (_, _) => SaveAll();
+        _applyButton.Click += (_, _) =>
+        {
+            if (SaveAll())
+            {
+                MessageBox.Show("설정이 적용되었습니다.", "환경설정", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        };
         _cancelButton.Click += (_, _) => Close();
 
         _tree.SelectedNode = _tree.Nodes[0];
