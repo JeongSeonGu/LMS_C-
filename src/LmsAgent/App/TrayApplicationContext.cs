@@ -27,9 +27,11 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly AutoPrintService _autoPrintService;
     private readonly LicenseGuardService _licenseGuardService;
     private readonly BreakBoardService _breakBoardService;
+    private readonly ScheduleReminderService _scheduleReminderService;
     private readonly NotifyIcon _trayIcon;
 
     private readonly ToolStripMenuItem _connectionStatusItem;
+    private readonly ToolStripMenuItem _licenseStatusItem;
     private readonly ToolStripMenuItem _loginItem;
     private readonly ToolStripMenuItem _userInfoItem;
 
@@ -54,14 +56,25 @@ public sealed class TrayApplicationContext : ApplicationContext
         _autoPrintService = new AutoPrintService(_api, _session, _settings);
         _licenseGuardService = new LicenseGuardService(_api, _settings);
         _breakBoardService = new BreakBoardService(_settings);
+        _scheduleReminderService = new ScheduleReminderService(_api, _session, _settings);
 
         _session.SessionChanged += OnSessionChanged;
         _session.ScheduleChanged += OnScheduleChanged;
+        _licenseGuardService.StatusChanged += OnLicenseStatusChanged;
+        _scheduleReminderService.ReminderRaised += OnScheduleReminderRaised;
 
         var menu = new ContextMenuStrip { Renderer = UiTheme.CreateMenuRenderer(), Font = UiTheme.BaseFont };
 
         _connectionStatusItem = new ToolStripMenuItem("연결 상태: 연결 중...") { Enabled = false };
         menu.Items.Add(_connectionStatusItem);
+
+        _licenseStatusItem = new ToolStripMenuItem("라이센스: 확인 전")
+        {
+            Enabled = false,
+            Image = UiTheme.CreateStatusIcon(UiTheme.TextSecondary, null),
+        };
+        menu.Items.Add(_licenseStatusItem);
+
         menu.Items.Add(new ToolStripMenuItem("교무업무 페이지", null, OnWorkSupportPageClicked));
         menu.Items.Add(new ToolStripSeparator());
 
@@ -107,6 +120,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _autoPrintService.Start();
         _scheduleOverlayService.ApplySettings();
         _breakBoardService.Start();
+        _scheduleReminderService.Start();
     }
 
     private void RunOnUiThread(Action action)
@@ -149,6 +163,29 @@ public sealed class TrayApplicationContext : ApplicationContext
             _loginItem.Text = _session.IsLoggedIn
                 ? $"다시 로그인 ({_session.Profile?.Name})"
                 : "로그인...";
+        });
+    }
+
+    private void OnScheduleReminderRaised(string title, string message)
+    {
+        RunOnUiThread(() => _trayIcon.ShowBalloonTip(6000, title, message, ToolTipIcon.Info));
+    }
+
+    private void OnLicenseStatusChanged(LicenseStatus status)
+    {
+        RunOnUiThread(() =>
+        {
+            var (text, color, mark) = status switch
+            {
+                LicenseStatus.Valid => ("라이센스: 인증됨", UiTheme.Success, (bool?)true),
+                LicenseStatus.Invalid => ("라이센스: 인증 실패", UiTheme.Danger, (bool?)false),
+                LicenseStatus.NotConfigured => ("라이센스: 미설정", UiTheme.TextSecondary, (bool?)null),
+                _ => ("라이센스: 확인 전", UiTheme.TextSecondary, (bool?)null),
+            };
+
+            _licenseStatusItem.Text = text;
+            _licenseStatusItem.Image?.Dispose();
+            _licenseStatusItem.Image = UiTheme.CreateStatusIcon(color, mark);
         });
     }
 
@@ -403,6 +440,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _autoPrintService.Dispose();
         _licenseGuardService.Dispose();
         _breakBoardService.Dispose();
+        _scheduleReminderService.Dispose();
         _api.Dispose();
         _ = _wsClient.StopAsync();
         ExitThread();

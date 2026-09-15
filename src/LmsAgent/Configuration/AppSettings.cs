@@ -76,6 +76,18 @@ public sealed class AppSettings
     /// <summary>학사달력 배경화면 오버레이의 불투명도(0~100%). 100이면 완전 불투명.</summary>
     public int ScheduleOverlayOpacityPercent { get; set; } = 85;
 
+    /// <summary>체크 시 일정 시작 10분 전에 화면 알림을 띄웁니다.</summary>
+    public bool ScheduleReminder10MinEnabled { get; set; }
+
+    /// <summary>체크 시 일정 시작 20분 전에 화면 알림을 띄웁니다.</summary>
+    public bool ScheduleReminder20MinEnabled { get; set; }
+
+    /// <summary>체크 시 일정 시작 30분 전에 화면 알림을 띄웁니다.</summary>
+    public bool ScheduleReminder30MinEnabled { get; set; }
+
+    /// <summary>체크 시 일정 시작 1시간 전에 화면 알림을 띄웁니다.</summary>
+    public bool ScheduleReminder60MinEnabled { get; set; }
+
     // ── 복무 ──────────────────────────────────────────────────
     /// <summary>복무 알림 배너를 띄울 모니터의 Screen.AllScreens 인덱스.</summary>
     public int DutyMonitorIndex { get; set; }

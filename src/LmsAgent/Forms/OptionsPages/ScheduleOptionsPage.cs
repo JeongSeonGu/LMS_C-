@@ -34,6 +34,11 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
 
     private readonly Label _opacityValueLabel = new() { Left = 335, Top = 122, Width = 50 };
 
+    private readonly CheckBox _reminder10Box = new() { Left = 130, Top = 222, Width = 110, Text = "10분 전" };
+    private readonly CheckBox _reminder20Box = new() { Left = 250, Top = 222, Width = 110, Text = "20분 전" };
+    private readonly CheckBox _reminder30Box = new() { Left = 130, Top = 250, Width = 110, Text = "30분 전" };
+    private readonly CheckBox _reminder60Box = new() { Left = 250, Top = 250, Width = 110, Text = "1시간 전" };
+
     public string CategoryName => "학사일정";
 
     public ScheduleOptionsPage()
@@ -65,6 +70,20 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
 
+        Controls.Add(new Label { Left = 20, Top = 195, Width = 200, Text = "일정 시작 알림" });
+        Controls.Add(_reminder10Box);
+        Controls.Add(_reminder20Box);
+        Controls.Add(_reminder30Box);
+        Controls.Add(_reminder60Box);
+
+        var reminderHint = new Label
+        {
+            Left = 20, Top = 280, Width = 380, Height = 20,
+            Text = "체크한 시간만큼 일정 시작 전에 화면 알림을 띄웁니다.",
+        };
+        UiTheme.StyleHintLabel(reminderHint);
+        Controls.Add(reminderHint);
+
         foreach (var option in DisplayHelper.GetMonitorOptions())
         {
             _monitorBox.Items.Add(option);
@@ -84,6 +103,10 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         _wallpaperBox.Checked = settings.ScheduleWallpaperEnabled;
         _opacityTrack.Value = Math.Clamp(settings.ScheduleOverlayOpacityPercent, _opacityTrack.Minimum, _opacityTrack.Maximum);
         UpdateOpacityLabel();
+        _reminder10Box.Checked = settings.ScheduleReminder10MinEnabled;
+        _reminder20Box.Checked = settings.ScheduleReminder20MinEnabled;
+        _reminder30Box.Checked = settings.ScheduleReminder30MinEnabled;
+        _reminder60Box.Checked = settings.ScheduleReminder60MinEnabled;
     }
 
     public void SaveTo(AppSettings settings)
@@ -92,6 +115,10 @@ public sealed class ScheduleOptionsPage : UserControl, IOptionsPage
         settings.ScheduleOutputUnit = _monthRadio.Checked ? ScheduleOutputUnit.Month : ScheduleOutputUnit.Week;
         settings.ScheduleWallpaperEnabled = _wallpaperBox.Checked;
         settings.ScheduleOverlayOpacityPercent = _opacityTrack.Value;
+        settings.ScheduleReminder10MinEnabled = _reminder10Box.Checked;
+        settings.ScheduleReminder20MinEnabled = _reminder20Box.Checked;
+        settings.ScheduleReminder30MinEnabled = _reminder30Box.Checked;
+        settings.ScheduleReminder60MinEnabled = _reminder60Box.Checked;
     }
 
     internal static void SelectMonitor(ComboBox box, int index)

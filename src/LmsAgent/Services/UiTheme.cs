@@ -185,6 +185,34 @@ public static class UiTheme
     /// <summary>트레이/드롭다운 메뉴에 테마 색을 입히는 렌더러. 생성 시 한 번만 만들어 재사용하세요.</summary>
     public static ToolStripRenderer CreateMenuRenderer() => new ToolStripProfessionalRenderer(new SkyOrangeColorTable());
 
+    /// <summary>
+    /// 메뉴 항목에 붙이는 작은 원형 상태 아이콘을 그립니다(예: 라이센스 인증 여부).
+    /// checkmark가 true면 흰색 체크 표시를, false면 x 표시를 그 위에 그립니다(null이면 표시 없음).
+    /// </summary>
+    public static Bitmap CreateStatusIcon(Color color, bool? checkmark)
+    {
+        var bmp = new Bitmap(16, 16);
+        using var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        using var brush = new SolidBrush(color);
+        g.FillEllipse(brush, 1, 1, 14, 14);
+
+        if (checkmark is true)
+        {
+            using var pen = new Pen(Color.White, 2f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
+            g.DrawLines(pen, new PointF[] { new(4, 8.5f), new(7, 11.5f), new(12, 5.5f) });
+        }
+        else if (checkmark is false)
+        {
+            using var pen = new Pen(Color.White, 2f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
+            g.DrawLine(pen, 5, 5, 11, 11);
+            g.DrawLine(pen, 11, 5, 5, 11);
+        }
+
+        return bmp;
+    }
+
     private sealed class SkyOrangeColorTable : ProfessionalColorTable
     {
         public override Color MenuItemSelected => OrangeLight;
