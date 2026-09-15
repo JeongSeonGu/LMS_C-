@@ -64,7 +64,9 @@ public sealed class WorkSupportApiClient : IDisposable
     public static Uri ComputeApiBaseUri(string serverUrl)
     {
         var wsUri = new Uri(serverUrl);
-        var scheme = wsUri.Scheme.Equals("wss", StringComparison.OrdinalIgnoreCase) ? "https" : "http";
+        var isSecure = wsUri.Scheme.Equals("wss", StringComparison.OrdinalIgnoreCase) ||
+                        wsUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase);
+        var scheme = isSecure ? "https" : "http";
         var builder = new UriBuilder(wsUri) { Scheme = scheme, Path = "", Query = "" };
 
         // UriBuilder는 스킴 변경 시 기본 포트를 다시 지정해줘야 http/https 표준 포트로 정리된다.

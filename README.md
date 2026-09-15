@@ -15,7 +15,9 @@ Windows 로그인 시 자동 실행되어 트레이(작업 표시줄 알림 영�
 ## 기술 스택
 
 - .NET 8 (Windows Forms), C# 12
-- `System.Net.WebSockets.ClientWebSocket` — node2.future-class.kr 실시간 연결(작업 요청/응답)
+- `SocketIOClient`(NuGet) — node2.future-class.kr 실시간 연결(작업 요청/응답). 이 서버는 순수
+  WebSocket이 아니라 Socket.IO(엔진.IO 위에 이벤트 기반 프로토콜을 얹은 것)로 동작하므로,
+  `System.Net.WebSockets.ClientWebSocket`으로는 핸드셰이크 자체가 성립하지 않습니다.
 - `HttpClient` + 쿠키 세션(`WSSESSID`) — WorkSupport PHP API 연동
 - 트레이 아이콘 상주 방식 (메인 창 없이 `ApplicationContext`로 실행)
 
@@ -29,7 +31,8 @@ src/LmsAgent/
   App/TrayApplicationContext.cs  트레이 아이콘과 전체 메뉴, 백그라운드 서비스 구동
   Configuration/                 AppSettings(환경설정 항목), 로컬 설정 파일(JSON) 저장/로드
   Networking/
-    WebSocketClientService.cs    node2.future-class.kr 웹소켓 연결(작업 요청/응답, 재연결)
+    WebSocketClientService.cs    node2.future-class.kr Socket.IO 연결("LMS_WindowAgent"
+                                  그룹 참가, "LMS_WindowAgent_ms" 메시지, 재연결은 라이브러리가 처리)
     WorkSupportApiClient.cs      WorkSupport PHP API 클라이언트 (쿠키 세션 유지, 파일 다운로드)
     WsEnvelope.cs / MessageTypes.cs  웹소켓 메시지 봉투/타입
   Models/
@@ -299,8 +302,6 @@ src/LmsAgent/
 
 ## 웹소켓 서버(Node.js) 연동 참고 구현
 
-> **이 부분은 이 저장소(C# 클라이언트)와 별개인 Node.js(Socket.IO) 서버 쪽 변경이 필요합니다.**
-
 기존 서버는 서비스마다(`ClassVote` 등) 연결 파일 안에 `socket.on('서비스명', ...)`으로
 입장 처리를, `socket.on('서비스명_ms', ...)`으로 실제 메세지 처리를 등록해 두고, 메세지
 처리 자체는 `require`한 별도 파일(`ws_InteractiveMsg.js` 등)에 위임하는 구조입니다. 기존
@@ -332,6 +333,26 @@ src/LmsAgent/
 > 못했고, 같은 소켓 채널을 여러 학교가 공유한다면 학교 단위 필터(`schoolId` 등)도
 > 함께 추가해야 합니다. `task.request`/`task.response`도 지금은 그룹 전체에 릴레이하도록
 > 되어 있는데, 특정 교사 PC 하나에만 보내야 한다면 대상 식별자로 필터링하도록 다듬으세요.
+
+### C# 클라이언트(LmsAgent) 쪽 변경 사항 — 반드시 함께 필요합니다
+
+서버가 Socket.IO로 동작하는 이상, LmsAgent도 순수 WebSocket이 아니라 Socket.IO 클라이언트여야
+접속이 성립합니다(Socket.IO는 엔진.IO 핸드셰이크와 이벤트 패킷 포맷이 있는 별도 프로토콜이라,
+`System.Net.WebSockets.ClientWebSocket`으로 연결하면 서버의 `io.on('connection', ...)`가
+아예 호출되지 않습니다). 그래서 `Networking/WebSocketClientService.cs`를 `SocketIOClient`
+NuGet 패키지 기반으로 다시 작성했습니다:
+
+- 연결되면 곧바로 `LMS_WindowAgent` 이벤트를 한 번 보내 그룹에 입장합니다
+  (`ClassVote`가 연결 시 `socket.emit('ClassVote', data)`를 보내는 것과 동일한 역할).
+- 이후 모든 메시지(`WsEnvelope` JSON)는 `LMS_WindowAgent_ms` 이벤트로 emit/on 합니다.
+- 재연결은 라이브러리의 내장 재연결(`Reconnection = true`)을 사용합니다.
+- 환경설정 &gt; 네트워크의 "실시간 연동 서버" 주소는 이제 `wss://host/ws` 형태가 아니라
+  Socket.IO 클라이언트가 요구하는 `https://host` 형태의 기준 주소로 입력해야 합니다
+  (`/socket.io/` 경로와 업그레이드 협상은 라이브러리가 알아서 처리합니다).
+
+`LMS_WindowAgent` 이벤트로 보내는 입장 payload(`schoolName`/`licenseKey`/`deviceId`)는
+`Add_UserList`가 실제로 기대하는 필드명을 몰라 임의로 정한 것이므로, 서버 쪽
+`Add_UserList` 구현을 확인해서 맞춰 주세요.
 
 ## UI 디자인 개편 (하늘색·오렌지 테마, Modern Flat UI)
 

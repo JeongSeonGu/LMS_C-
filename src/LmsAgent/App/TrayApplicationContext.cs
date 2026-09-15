@@ -45,7 +45,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         // 핸들을 강제로 생성해 Invoke/BeginInvoke가 즉시 동작하도록 합니다. 창은 표시하지 않습니다.
         _ = _uiThreadHandle.Handle;
 
-        _wsClient = new WebSocketClientService(_settings.ServerUrl);
+        _wsClient = new WebSocketClientService(_settings);
         _wsClient.StateChanged += OnConnectionStateChanged;
         _wsClient.TaskRequested += OnTaskRequested;
 

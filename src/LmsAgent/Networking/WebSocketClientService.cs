@@ -1,26 +1,32 @@
 using System;
 using System.Collections.Concurrent;
-using System.IO;
-using System.Net.WebSockets;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using LmsAgent.Configuration;
+using SocketIOClient;
 
 namespace LmsAgent.Networking;
 
 /// <summary>
-/// node2.future-class.kr 웹소켓 서버와의 연결을 관리합니다.
-/// 연결이 끊어지면 지수 백오프로 자동 재연결하며, 요청/응답 상관관계 매칭과
-/// 서버가 먼저 보내는 작업 요청(push) 수신을 함께 처리합니다.
+/// node2.future-class.kr 서버와의 실시간 연동을 관리합니다.
+///
+/// 서버는 Socket.IO로 동작합니다(순수 System.Net.WebSockets 서버가 아닙니다). 다른 서비스들이
+/// io.on('connection', socket => { socket.on('ClassVote', ...); socket.on('ClassVote_ms', ...); })
+/// 형태로 연결/메세지 이벤트를 나누듯이, 이 프로그램은 "LMS_WindowAgent" 그룹으로 접속하고
+/// "LMS_WindowAgent_ms" 이벤트로 메세지를 주고받습니다(nodejs-reference/ 참고).
+/// 재연결은 SocketIOClient 라이브러리가 자동으로 처리합니다.
 /// </summary>
 public sealed class WebSocketClientService : IAsyncDisposable
 {
+    private const string JoinEvent = "LMS_WindowAgent";
+    private const string MessageEvent = "LMS_WindowAgent_ms";
+
     private readonly Uri _serverUri;
+    private readonly AppSettings _settings;
     private readonly ConcurrentDictionary<string, TaskCompletionSource<WsEnvelope>> _pending = new();
 
-    private ClientWebSocket? _socket;
-    private CancellationTokenSource? _lifetimeCts;
-    private Task? _connectionLoopTask;
+    private SocketIO? _client;
 
     public event Action<ConnectionState>? StateChanged;
     public event Action<WsEnvelope>? TaskRequested;
@@ -28,134 +34,106 @@ public sealed class WebSocketClientService : IAsyncDisposable
 
     public ConnectionState State { get; private set; } = ConnectionState.Disconnected;
 
-    public WebSocketClientService(string serverUrl)
+    public WebSocketClientService(AppSettings settings)
     {
-        _serverUri = new Uri(serverUrl);
+        _settings = settings;
+        _serverUri = new Uri(settings.ServerUrl);
     }
 
     public void Start()
     {
-        if (_connectionLoopTask is not null)
+        if (_client is not null)
         {
             return;
         }
 
-        _lifetimeCts = new CancellationTokenSource();
-        _connectionLoopTask = Task.Run(() => ConnectionLoopAsync(_lifetimeCts.Token));
-    }
-
-    public async Task StopAsync()
-    {
-        _lifetimeCts?.Cancel();
-
-        if (_connectionLoopTask is not null)
+        var client = new SocketIO(_serverUri, new SocketIOOptions
         {
+            Reconnection = true,
+            ReconnectionAttempts = int.MaxValue,
+            ReconnectionDelay = 2000,
+            ReconnectionDelayMax = 30000,
+            EIO = EngineIO.V4,
+        });
+
+        client.OnConnected += async (_, _) =>
+        {
+            SetState(ConnectionState.Connected);
             try
             {
-                await _connectionLoopTask.ConfigureAwait(false);
-            }
-            catch
-            {
-                // 종료 과정의 예외는 무시합니다.
-            }
-        }
-
-        await CloseSocketAsync().ConfigureAwait(false);
-    }
-
-    private async Task ConnectionLoopAsync(CancellationToken token)
-    {
-        var backoffSeconds = 2.0;
-        const double maxBackoffSeconds = 30.0;
-
-        while (!token.IsCancellationRequested)
-        {
-            try
-            {
-                SetState(ConnectionState.Connecting);
-
-                _socket = new ClientWebSocket();
-                await _socket.ConnectAsync(_serverUri, token).ConfigureAwait(false);
-
-                SetState(ConnectionState.Connected);
-                backoffSeconds = 2.0;
-
-                await ReceiveLoopAsync(_socket, token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
+                // ClassVote 등 다른 서비스들처럼, 연결 직후 그룹 참가용 이벤트를 한 번 보낸다.
+                // Add_UserList(data, io, socket.id, "Connection_LMS_WindowAgent")가 이 payload를
+                // userList에 등록하므로, 실제 Add_UserList 구현이 요구하는 필드명에 맞춰 조정하세요.
+                await client.EmitAsync(JoinEvent, new
+                {
+                    schoolName = _settings.SchoolName,
+                    licenseKey = _settings.LicenseKey,
+                    deviceId = _settings.DeviceId,
+                });
             }
             catch (Exception ex)
             {
-                LogMessage?.Invoke($"웹소켓 오류: {ex.Message}");
+                LogMessage?.Invoke($"그룹 참가 메세지 전송 실패: {ex.Message}");
             }
-            finally
-            {
-                SetState(ConnectionState.Disconnected);
-                await CloseSocketAsync().ConfigureAwait(false);
-            }
+        };
 
-            if (token.IsCancellationRequested)
-            {
-                break;
-            }
-
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(backoffSeconds), token).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-
-            backoffSeconds = Math.Min(backoffSeconds * 2, maxBackoffSeconds);
-        }
-    }
-
-    private async Task ReceiveLoopAsync(ClientWebSocket socket, CancellationToken token)
-    {
-        var buffer = new byte[8192];
-
-        while (socket.State == WebSocketState.Open && !token.IsCancellationRequested)
+        client.OnDisconnected += (_, reason) =>
         {
-            using var messageStream = new MemoryStream();
-            WebSocketReceiveResult result;
+            SetState(ConnectionState.Disconnected);
+            LogMessage?.Invoke($"웹소켓 연결이 끊어졌습니다: {reason}");
+        };
 
-            do
-            {
-                result = await socket.ReceiveAsync(buffer, token).ConfigureAwait(false);
-                if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    return;
-                }
+        client.OnReconnectAttempt += (_, _) => SetState(ConnectionState.Connecting);
 
-                messageStream.Write(buffer, 0, result.Count);
-            }
-            while (!result.EndOfMessage);
+        client.OnError += (_, error) => LogMessage?.Invoke($"웹소켓 오류: {error}");
 
-            messageStream.Position = 0;
-
+        client.On(MessageEvent, response =>
+        {
             WsEnvelope? envelope;
             try
             {
-                envelope = JsonSerializer.Deserialize<WsEnvelope>(messageStream, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                });
+                envelope = response.GetValue<WsEnvelope>();
             }
             catch (JsonException)
             {
                 LogMessage?.Invoke("잘못된 형식의 메시지를 수신했습니다.");
-                continue;
+                return;
             }
 
             if (envelope is not null)
             {
                 Dispatch(envelope);
             }
+        });
+
+        _client = client;
+        SetState(ConnectionState.Connecting);
+        _ = client.ConnectAsync();
+    }
+
+    public async Task StopAsync()
+    {
+        var client = _client;
+        _client = null;
+        if (client is null)
+        {
+            return;
         }
+
+        try
+        {
+            await client.DisconnectAsync().ConfigureAwait(false);
+        }
+        catch
+        {
+            // 종료 과정의 예외는 무시합니다.
+        }
+        finally
+        {
+            client.Dispose();
+        }
+
+        SetState(ConnectionState.Disconnected);
     }
 
     private void Dispatch(WsEnvelope envelope)
@@ -208,14 +186,13 @@ public sealed class WebSocketClientService : IAsyncDisposable
 
     public async Task SendAsync(WsEnvelope envelope)
     {
-        var socket = _socket;
-        if (socket is null || socket.State != WebSocketState.Open)
+        var client = _client;
+        if (client is null || client.Connected != true)
         {
             throw new InvalidOperationException("서버에 연결되어 있지 않습니다.");
         }
 
-        var json = JsonSerializer.SerializeToUtf8Bytes(envelope);
-        await socket.SendAsync(json, WebSocketMessageType.Text, true, CancellationToken.None).ConfigureAwait(false);
+        await client.EmitAsync(MessageEvent, envelope).ConfigureAwait(false);
     }
 
     private void SetState(ConnectionState state)
@@ -224,36 +201,8 @@ public sealed class WebSocketClientService : IAsyncDisposable
         StateChanged?.Invoke(state);
     }
 
-    private async Task CloseSocketAsync()
-    {
-        var socket = _socket;
-        _socket = null;
-        if (socket is null)
-        {
-            return;
-        }
-
-        try
-        {
-            if (socket.State == WebSocketState.Open)
-            {
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "closing", CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
-        }
-        catch
-        {
-            // 종료 중 발생하는 오류는 무시합니다.
-        }
-        finally
-        {
-            socket.Dispose();
-        }
-    }
-
     public async ValueTask DisposeAsync()
     {
         await StopAsync().ConfigureAwait(false);
-        _lifetimeCts?.Dispose();
     }
 }

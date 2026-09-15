@@ -22,7 +22,18 @@ public sealed class OptionsForm : Form
     // 지정하므로 추가 순서와 무관하게 항상 같은 자리에 배치됩니다.
     private readonly TableLayoutPanel _root = new() { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
     private readonly TableLayoutPanel _contentRow = new() { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
-    private readonly Panel _bottomPanel = new() { Dock = DockStyle.Fill };
+
+    // 버튼을 Left/Top 절대 좌표로 두면 폼 폭이나 DPI 배율이 달라질 때 패널 밖으로 밀려날 수 있으므로,
+    // 오른쪽 정렬 FlowLayoutPanel(Dock=Right, AutoSize)로 항상 패널 안쪽에 붙어 보이도록 한다.
+    private readonly FlowLayoutPanel _bottomPanel = new()
+    {
+        Dock = DockStyle.Right,
+        FlowDirection = FlowDirection.LeftToRight,
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        WrapContents = false,
+        Margin = new Padding(0),
+    };
 
     private readonly TreeView _tree = new()
     {
@@ -37,20 +48,9 @@ public sealed class OptionsForm : Form
         BorderStyle = BorderStyle.FixedSingle,
     };
 
-    private readonly Button _okButton = new()
-    {
-        Left = 336, Top = 10, Width = 80, Text = "확인", Anchor = AnchorStyles.Top | AnchorStyles.Right,
-    };
-
-    private readonly Button _cancelButton = new()
-    {
-        Left = 422, Top = 10, Width = 80, Text = "취소", Anchor = AnchorStyles.Top | AnchorStyles.Right,
-    };
-
-    private readonly Button _applyButton = new()
-    {
-        Left = 508, Top = 10, Width = 80, Text = "적용", Anchor = AnchorStyles.Top | AnchorStyles.Right,
-    };
+    private readonly Button _okButton = new() { Width = 80, Height = 30, Text = "확인", Margin = new Padding(0, 10, 8, 10) };
+    private readonly Button _cancelButton = new() { Width = 80, Height = 30, Text = "취소", Margin = new Padding(0, 10, 8, 10) };
+    private readonly Button _applyButton = new() { Width = 80, Height = 30, Text = "적용", Margin = new Padding(0, 10, 12, 10) };
 
     public OptionsForm(AppSettings settings)
     {

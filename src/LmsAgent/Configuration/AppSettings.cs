@@ -17,10 +17,13 @@ public sealed class AppSettings
 {
     // ── 네트워크 ──────────────────────────────────────────────
     /// <summary>
-    /// 서버가 클라이언트에 작업을 요청/응답하는 실시간 연동용 웹소켓 주소.
+    /// 서버가 클라이언트에 작업을 요청/응답하는 실시간 연동용 Socket.IO 서버 주소.
+    /// (기존 node2.future-class.kr 서버가 Socket.IO로 동작하므로, "wss://host/ws"가 아니라
+    /// Socket.IO 클라이언트 라이브러리가 요구하는 "http(s)://host" 형태의 기준 주소를 씁니다.
+    /// 경로("/socket.io/")와 업그레이드 협상은 라이브러리가 알아서 처리합니다.)
     /// 실제 학사 데이터 API(WorkSupport 웹 서비스)는 별도 호스트(<see cref="ApiBaseUrlOverride"/>)를 통합니다.
     /// </summary>
-    public string ServerUrl { get; set; } = "wss://node2.future-class.kr/ws";
+    public string ServerUrl { get; set; } = "https://node2.future-class.kr";
 
     /// <summary>업데이트 매니페스트(버전 정보)를 확인할 주소.</summary>
     public string UpdateManifestUrl { get; set; } = "https://node2.future-class.kr/update/manifest.json";
