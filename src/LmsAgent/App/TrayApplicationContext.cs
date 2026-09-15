@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
@@ -32,6 +33,11 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private readonly ToolStripMenuItem _connectionStatusItem;
     private readonly ToolStripMenuItem _licenseStatusItem;
+
+    // 연결 상태 항목은 Enabled=false(클릭 방지용)라서 ToolStripProfessionalRenderer가
+    // 기본적으로 회색으로만 그린다. RenderItemText에서 이 색으로 직접 덮어써서
+    // 연결됨(초록)/연결 끊김(빨강)이 눈에 띄도록 한다.
+    private Color _connectionStatusColor = UiTheme.TextSecondary;
     private readonly ToolStripMenuItem _loginItem;
     private readonly ToolStripMenuItem _userInfoItem;
 
@@ -64,6 +70,13 @@ public sealed class TrayApplicationContext : ApplicationContext
         _scheduleReminderService.ReminderRaised += OnScheduleReminderRaised;
 
         var menu = new ContextMenuStrip { Renderer = UiTheme.CreateMenuRenderer(), Font = UiTheme.BaseFont };
+        menu.Renderer.RenderItemText += (_, e) =>
+        {
+            if (ReferenceEquals(e.Item, _connectionStatusItem))
+            {
+                e.TextColor = _connectionStatusColor;
+            }
+        };
 
         _connectionStatusItem = new ToolStripMenuItem("연결 상태: 연결 중...") { Enabled = false };
         menu.Items.Add(_connectionStatusItem);
@@ -144,6 +157,13 @@ public sealed class TrayApplicationContext : ApplicationContext
                 ConnectionState.Connected => "연결 상태: 연결됨",
                 ConnectionState.Connecting => "연결 상태: 연결 중...",
                 _ => "연결 상태: 연결 끊김",
+            };
+
+            _connectionStatusColor = state switch
+            {
+                ConnectionState.Connected => UiTheme.Success,
+                ConnectionState.Connecting => UiTheme.TextSecondary,
+                _ => UiTheme.Danger,
             };
 
             _trayIcon.Text = state switch

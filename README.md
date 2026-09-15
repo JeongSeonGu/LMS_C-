@@ -449,7 +449,7 @@ dotnet run --project src/LmsAgent/LmsAgent.csproj
 > Linux 컨테이너라 `dotnet` SDK가 없어 실제 빌드 검증은 하지 못했습니다 — 코드 리뷰와
 > API 스펙 대조로 정합성을 확인했으니, 빌드 후 에러가 있다면 알려주세요.
 
-### 배포용 설치 파일 만들기
+### 배포용 설치 파일 만들기 (dotnet CLI)
 
 exe 하나로 배포하려면(별도 .NET 런타임 설치 없이 실행되도록) 자체 포함(self-contained)
 단일 파일로 게시합니다.
@@ -467,9 +467,76 @@ dotnet publish src/LmsAgent/LmsAgent.csproj -c Release -r win-x64 ^
 - 별도의 설치 마법사(예: Inno Setup, WiX)를 만들고 싶다면 이 `dist/LmsAgent` 폴더를
   설치 스크립트의 소스 폴더로 지정하면 됩니다. 이 저장소에는 아직 설치 마법사 스크립트를
   포함하지 않았습니다.
-- 최초 설치 후 첫 실행 시 사용자가 환경설정 &gt; 네트워크에서 웹소켓 서버/업데이트 서버/
+- 최초 설치 후 첫 실행 시 사용자가 환경설정 &gt; 네트워크에서 실시간 연동 서버/업데이트 서버/
   WorkSupport 서버 주소를 학교 환경에 맞게 확인해야 합니다(코드의 기본값은
   `future-class.kr` 기준입니다).
+
+### Visual Studio에서 배포용 파일 만들기 (게시/Publish)
+
+명령줄 대신 Visual Studio GUI만으로도 같은 결과물을 만들 수 있습니다.
+
+1. **솔루션 탐색기**에서 `LmsAgent` 프로젝트를 마우스 오른쪽 버튼으로 클릭 → **게시(Publish)**.
+2. 처음 게시하는 경우 게시 대상 선택 화면이 뜹니다 → **폴더(Folder)** 선택 → 위치는
+   프로젝트 기준 상대경로로 `dist\LmsAgent`처럼 지정합니다 → **완료(Finish)**.
+3. 생성된 게시 프로필 화면에서 **모든 설정 표시(Show all settings)**(또는 연필 아이콘의
+   편집)를 눌러 아래 값들을 확인/설정합니다.
+   | 항목 | 값 |
+   |---|---|
+   | 구성(Configuration) | Release |
+   | 대상 프레임워크(Target framework) | net8.0-windows |
+   | 배포 모드(Deployment mode) | 자체 포함(Self-contained) |
+   | 대상 런타임(Target runtime) | win-x64 |
+   | 단일 파일 생성(Produce single file) | 체크 |
+   | 트리밍(Trim unused code) | 체크 해제(WinForms는 리플렉션을 쓰는 부분이 있어 트리밍하면 런타임 오류가 날 수 있습니다) |
+4. **저장(Save)** 후 **게시(Publish)** 버튼을 누르면 `dist\LmsAgent\`에 `LmsAgent.exe`
+   (및 `.pdb`)가 생성됩니다.
+5. 이 설정은 `src\LmsAgent\Properties\PublishProfiles\FolderProfile.pubxml`에 저장되므로,
+   다음 버전부터는 프로젝트 우클릭 → 게시 → **게시** 버튼만 다시 누르면 됩니다(설정을 매번
+   다시 할 필요 없음). 이 `.pubxml`은 저장소에 커밋해 두면 팀원 누구나 같은 설정으로
+   게시할 수 있습니다.
+
+### 버전 변경하기
+
+`manifest.json`의 `version`과 비교되는 값은 exe에 박히는 **파일 버전(FileVersion)**이므로,
+새 패치를 배포할 때마다 이 값을 반드시 올려야 클라이언트가 업데이트를 감지합니다. 버전은
+`src\LmsAgent\LmsAgent.csproj`의 `<AssemblyVersion>`/`<FileVersion>`/`<Version>` 세 값으로
+관리하며(보통 셋 다 같은 값으로 맞춥니다), Visual Studio에서 바꾸는 방법은 두 가지입니다.
+
+- **GUI로 수정**: 솔루션 탐색기에서 `LmsAgent` 프로젝트 우클릭 → **속성(Properties)** →
+  왼쪽 **패키지(Package)** 탭 → **일반(General)** → "어셈블리 버전", "파일 버전", "패키지
+  버전" 세 항목을 새 버전으로 수정 → 저장(Ctrl+S).
+- **파일을 직접 수정**: 솔루션 탐색기에서 `LmsAgent` 프로젝트 우클릭 → **프로젝트 파일
+  편집(Edit Project File)** → `.csproj`가 XML 편집기로 열리면 `<AssemblyVersion>1.0.0.0</AssemblyVersion>`
+  등 세 줄을 직접 고치고 저장.
+
+### 패치 파일 준비 절차 (Visual Studio 기준, 버전 변경 → 빌드 → 서버 업로드 직전까지)
+
+새 버전을 만들 때마다 아래 순서로 진행하면 됩니다. 5번까지 마치면 서버에 zip을 올릴
+준비가 끝난 것이고, 그 다음은 아래 "업데이트 배포 방법"의 3~5단계로 이어집니다.
+
+1. 위 "버전 변경하기"대로 `LmsAgent.csproj`의 버전 세 값을 새 버전으로 올리고 저장합니다.
+2. 상단 메뉴 **빌드(Build) → 솔루션 다시 빌드(Rebuild Solution)**로 한 번 깨끗하게
+   다시 빌드해서, 구성이 **Release**로 되어 있고(상단 툴바의 구성 드롭다운) 컴파일 오류가
+   없는지 확인합니다.
+3. 위 "Visual Studio에서 배포용 파일 만들기" 대로 **게시(Publish)**를 실행해 `dist\LmsAgent\`
+   폴더를 새로 만듭니다. 같은 폴더에 이전 버전 결과물이 남아있으면 옛 파일이 섞여 들어갈
+   수 있으니, 게시 전에 `dist\LmsAgent` 폴더를 탐색기에서 미리 비워 두는 것을 권장합니다.
+4. `dist\LmsAgent` 폴더 **안으로** 들어가서 그 안의 파일 전체를 선택한 뒤 압축합니다
+   (`dist` 폴더 자체를 압축하면 압축 파일 안에 폴더가 한 겹 더 들어가 버려서, 업데이트
+   적용 시 `xcopy`가 실행 파일을 제자리에 덮어쓰지 못합니다 — 반드시 `LmsAgent.exe`가
+   zip의 최상위에 오도록 압축하세요). 파일명은 버전을 포함해서 예:
+   `LmsAgent-1.2.0.0.zip`처럼 짓습니다.
+5. 이 zip 파일의 SHA-256 해시를 구해 둡니다(다음 단계에서 `manifest.json`의 `sha256`에
+   넣습니다). Windows 명령 프롬프트에서:
+   ```
+   certutil -hashfile LmsAgent-1.2.0.0.zip SHA256
+   ```
+   PowerShell이면:
+   ```
+   Get-FileHash LmsAgent-1.2.0.0.zip -Algorithm SHA256
+   ```
+
+여기까지가 서버 업로드 **직전까지** 로컬(Visual Studio)에서 해야 할 과정입니다.
 
 ### 업데이트 배포 방법
 
@@ -488,17 +555,12 @@ JSON을 조회합니다(`Services/UpdateService.cs`). 매니페스트 형식은 
 
 새 버전을 배포하는 절차:
 
-1. 위 "배포용 설치 파일 만들기" 절차로 새 버전을 `dotnet publish`합니다(csproj의
-   `<AssemblyVersion>`/`<FileVersion>`을 먼저 올려두세요 — `manifest.version`과
-   비교되는 값은 실행 파일에 박힌 어셈블리 버전입니다).
-2. `dist/LmsAgent` 폴더 전체를 zip으로 압축합니다(예: `LmsAgent-1.2.0.0.zip`).
-   폴더 안의 `LmsAgent.exe`가 `xcopy`로 설치 폴더에 그대로 덮어써지므로, 압축 파일의
-   최상위에 실행 파일이 오도록 압축하세요(불필요한 상위 폴더가 하나 더 들어가지 않게).
-3. 이 zip 파일을 정적 파일로 서빙할 수 있는 곳(웹 서버, 오브젝트 스토리지 등)에 올리고,
-   `sha256sum LmsAgent-1.2.0.0.zip`(또는 `certutil -hashfile ... SHA256`)로 해시를 구합니다.
-4. `UpdateManifestUrl`이 가리키는 `manifest.json`을 위 형식대로 갱신합니다
-   (`version`을 새 버전으로, `downloadUrl`을 3번의 zip 주소로, `sha256`을 4번의 해시로).
-5. 그 다음부터 프로그램을 실행하는 모든 PC가 실행 시점에 새 버전을 감지해서 자동으로
+1. 위 "버전 변경하기" · "패치 파일 준비 절차"대로 버전을 올리고, 빌드/게시해서
+   `LmsAgent-1.2.0.0.zip`과 그 SHA-256 해시를 준비합니다.
+2. 이 zip 파일을 정적 파일로 서빙할 수 있는 곳(웹 서버, 오브젝트 스토리지 등)에 올립니다.
+3. `UpdateManifestUrl`이 가리키는 `manifest.json`을 위 형식대로 갱신합니다
+   (`version`을 새 버전으로, `downloadUrl`을 1번의 zip 주소로, `sha256`을 1번의 해시로).
+4. 그 다음부터 프로그램을 실행하는 모든 PC가 실행 시점에 새 버전을 감지해서 자동으로
    내려받고 적용합니다. 동작 순서: (1) zip 다운로드 → sha256 일치 확인 → (2) 임시 폴더에
    압축 해제 → (3) 배치 스크립트(`apply_update.bat`)를 띄우고 현재 프로세스 종료 → (4) 배치
    스크립트가 2초 대기 후 압축 해제한 파일들을 설치 폴더에 `xcopy /E /Y /I`로 덮어쓰고 →
