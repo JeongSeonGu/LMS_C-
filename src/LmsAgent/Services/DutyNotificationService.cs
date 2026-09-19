@@ -44,6 +44,9 @@ public sealed class DutyNotificationService : IDisposable
         HideBanner();
     }
 
+    /// <summary>15분 타이머를 기다리지 않고 즉시 다시 확인합니다(실시간 연동 알림 수신 시 호출).</summary>
+    public void RefreshNow() => _ = CheckAsync();
+
     private async Task CheckAsync()
     {
         var watchedPositions = new List<string>();

@@ -17,11 +17,10 @@ public sealed class AppSettings
 {
     // ── 네트워크 ──────────────────────────────────────────────
     /// <summary>
-    /// 서버가 클라이언트에 작업을 요청/응답하는 실시간 연동용 Socket.IO 서버 주소.
-    /// (기존 node2.future-class.kr 서버가 Socket.IO로 동작하므로, "wss://host/ws"가 아니라
-    /// Socket.IO 클라이언트 라이브러리가 요구하는 "http(s)://host" 형태의 기준 주소를 씁니다.
-    /// 경로("/socket.io/")와 업그레이드 협상은 라이브러리가 알아서 처리합니다.)
-    /// 실제 학사 데이터 API(WorkSupport 웹 서비스)는 별도 호스트(<see cref="ApiBaseUrlOverride"/>)를 통합니다.
+    /// <see cref="ApiBaseUrlOverride"/>가 비어 있을 때 WorkSupport API 기준 주소를 유도하는 데만
+    /// 쓰는 폴백 주소입니다. 실시간 연동(웹소켓) 접속 주소는 더 이상 이 값이 아니라, 접속할 때마다
+    /// 발급받는 티켓(<see cref="DeviceTicket"/>)의 agentUrl을 그대로 씁니다 — 서버가 Socket.IO가
+    /// 아니라 raw WebSocket(node2.future-class.kr/ws-lms)으로 동작하기 때문입니다.
     /// </summary>
     public string ServerUrl { get; set; } = "https://node2.future-class.kr";
 
@@ -66,7 +65,19 @@ public sealed class AppSettings
     // ── 프로그램 동작 ─────────────────────────────────────────
     public bool AutoStartWithWindows { get; set; } = true;
     public string? SavedLoginId { get; set; }
+
+    /// <summary>
+    /// 실시간 연동(웹소켓) 인증용 기기 식별자. 서버 관리자가 schoolwork_realtime_devices에
+    /// 등록해 둔 device_id와 정확히 같아야 합니다(임의로 자동 생성하지 않습니다 — 관리자가
+    /// 지정한 값을 환경설정 &gt; 실시간 연동에서 입력해야 합니다).
+    /// </summary>
     public string? DeviceId { get; set; }
+
+    /// <summary>
+    /// 위 기기의 토큰. 평문이 아니라 <see cref="DeviceTokenProtector"/>로 DPAPI 암호화된
+    /// Base64 값을 저장합니다(환경설정 화면에도 평문으로 다시 표시되지 않습니다).
+    /// </summary>
+    public string? DeviceTokenProtected { get; set; }
 
     // ── 학사일정 ──────────────────────────────────────────────
     /// <summary>학사일정을 출력할 모니터의 Screen.AllScreens 인덱스.</summary>

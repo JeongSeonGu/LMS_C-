@@ -117,6 +117,17 @@ public sealed class WorkSupportApiClient : IDisposable
         return await GetJsonAsync<ProfileInfo>("php/auth/profile.php?action=get").ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// 실시간 연동(웹소켓) 접속용 1회용 티켓을 발급받는다(60초 유효). 기기 토큰을 소켓에 직접
+    /// 보내지 않고, 접속할 때마다 이 티켓을 새로 받아야 한다(웹소켓_데이터통신규칙.md §3 참고).
+    /// </summary>
+    public async Task<ApiEnvelope<Models.Realtime.DeviceTicket>> IssueDeviceTicketAsync(string deviceId, string tokenPlain)
+    {
+        return await PostJsonAsync<DeviceTicketRequest, Models.Realtime.DeviceTicket>(
+            "php/auth/rt_ticket.php?mode=device",
+            new DeviceTicketRequest { DeviceId = deviceId, Token = tokenPlain }).ConfigureAwait(false);
+    }
+
     public async Task<ApiEnvelope<object>> UpdateProfileAsync(
         string contact, string loginId, string currentPassword, string newPassword)
     {
@@ -447,6 +458,12 @@ public sealed class WorkSupportApiClient : IDisposable
     }
 
     public void Dispose() => _http.Dispose();
+
+    private sealed class DeviceTicketRequest
+    {
+        [JsonPropertyName("device_id")] public string DeviceId { get; set; } = "";
+        [JsonPropertyName("token")] public string Token { get; set; } = "";
+    }
 
     private sealed class EventWriteRequest
     {

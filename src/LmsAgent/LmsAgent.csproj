@@ -26,10 +26,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- node2.future-class.kr 서버가 Socket.IO로 동작하므로, 순수 System.Net.WebSockets 대신
-         Socket.IO 와이어 프로토콜(엔진.IO 핸드셰이크 + 이벤트 패킷)을 구현해 주는 클라이언트를 쓴다.
-         NuGet 복원 시 이 버전이 없다고 나오면 nuget.org에서 "SocketIOClient"의 최신 버전으로 올리면 된다. -->
-    <PackageReference Include="SocketIOClient" Version="4.0.5" />
+    <!-- 실시간 연동 서버(node2.future-class.kr)는 Socket.IO가 아니라 raw WebSocket(/ws-lms)이므로
+         System.Net.WebSockets.ClientWebSocket만으로 충분하다(SocketIOClient 불필요). 기기 토큰을
+         평문으로 저장하지 않기 위해 DPAPI 래퍼(System.Security.Cryptography.ProtectedData)만 추가한다. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

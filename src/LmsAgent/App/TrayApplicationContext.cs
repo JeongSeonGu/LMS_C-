@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Forms;
-using LmsAgent.Models;
 using LmsAgent.Networking;
 using LmsAgent.Services;
 
@@ -51,11 +50,11 @@ public sealed class TrayApplicationContext : ApplicationContext
         // 핸들을 강제로 생성해 Invoke/BeginInvoke가 즉시 동작하도록 합니다. 창은 표시하지 않습니다.
         _ = _uiThreadHandle.Handle;
 
-        _wsClient = new WebSocketClientService(_settings);
-        _wsClient.StateChanged += OnConnectionStateChanged;
-        _wsClient.TaskRequested += OnTaskRequested;
-
         _api = new WorkSupportApiClient(_settings.ServerUrl, _settings.ApiBaseUrlOverride);
+
+        _wsClient = new WebSocketClientService(_api, _settings);
+        _wsClient.StateChanged += OnConnectionStateChanged;
+        _wsClient.ScopeChanged += OnRealtimeScopeChanged;
 
         _dutyService = new DutyNotificationService(_api, _settings);
         _scheduleOverlayService = new ScheduleOverlayService(_api, _session, _settings);
@@ -210,62 +209,41 @@ public sealed class TrayApplicationContext : ApplicationContext
     }
 
     /// <summary>
-    /// 학사 일정이 Windows 쪽에서 등록/수정/삭제되었을 때 호출됩니다.
-    /// 배경화면 오버레이는 30분 타이머를 기다리지 않고 바로 갱신하고,
-    /// 서버에는 웹페이지 쪽도 새로고침하라는 웹소켓 알림을 보냅니다.
+    /// 학사 일정이 Windows 쪽에서 등록/수정/삭제되었을 때 호출됩니다. 배경화면 오버레이를
+    /// 30분 타이머를 기다리지 않고 바로 갱신합니다. 웹 브라우저 쪽 새로고침은 별도로 알릴 필요가
+    /// 없습니다 — 이 변경도 기존 HTTP API를 통해 이루어지므로, 서버가 DB 커밋 시점에 자동으로
+    /// domain.event를 발행해 웹 클라이언트에게 전달합니다(웹소켓_데이터통신규칙.md 참고).
     /// </summary>
     private void OnScheduleChanged()
     {
         _scheduleOverlayService.RefreshNow();
-        _ = BroadcastScheduleUpdatedAsync();
     }
 
-    private async Task BroadcastScheduleUpdatedAsync()
+    /// <summary>
+    /// 실시간 연동 서버로부터 "이 scope가 바뀌었다"는 알림을 받았을 때 호출됩니다(웹 브라우저 등
+    /// 다른 클라이언트가 변경한 경우 포함). payload에는 실제 데이터가 없으므로, type을 보고
+    /// 필요한 기존 화면/서비스만 즉시 다시 조회하도록 합니다.
+    /// </summary>
+    private void OnRealtimeScopeChanged(string scope, string type)
     {
-        if (_wsClient.State != ConnectionState.Connected)
+        if (scope != "calendar")
         {
-            return;
-        }
-
-        try
-        {
-            await _wsClient.SendAsync(WsEnvelope.Create(MessageTypes.ScheduleUpdated, new
-            {
-                source = "windows",
-                updatedAt = DateTime.UtcNow.ToString("o"),
-            }));
-        }
-        catch
-        {
-            // 전송 실패는 조용히 무시합니다(다음 변경 시점이나 재연결 후 다시 시도됩니다).
-        }
-    }
-
-    private void OnTaskRequested(WsEnvelope envelope)
-    {
-        var payload = envelope.GetPayload<TaskRequestPayload>();
-        if (payload is null)
-        {
+            // 현재 구독 중인 모듈은 calendar/notice뿐이며, notice는 별도 처리 화면이 없다.
             return;
         }
 
         RunOnUiThread(() =>
         {
-            using var form = new TaskRequestForm(payload);
-            var accepted = form.ShowDialog() == DialogResult.Yes;
-
-            var response = WsEnvelope.Create(MessageTypes.TaskResponse, new TaskResponsePayload
+            if (type.StartsWith("work.calendar.duty", StringComparison.Ordinal))
             {
-                TaskId = payload.TaskId,
-                Accepted = accepted,
-                ResultMessage = accepted ? "작업을 수락했습니다." : "작업을 거절했습니다.",
-            });
-
-            _ = _wsClient.SendAsync(response);
-
-            _trayIcon.ShowBalloonTip(3000, "작업 요청",
-                accepted ? $"'{payload.Title}' 작업을 수락했습니다." : $"'{payload.Title}' 작업을 거절했습니다.",
-                ToolTipIcon.Info);
+                _dutyService.RefreshNow();
+            }
+            else
+            {
+                // work.calendar.event(학사 일정), work.calendar.todo(할일), resync(재동기화) 등은
+                // 배경화면 학사달력 오버레이를 즉시 갱신한다.
+                _scheduleOverlayService.RefreshNow();
+            }
         });
     }
 

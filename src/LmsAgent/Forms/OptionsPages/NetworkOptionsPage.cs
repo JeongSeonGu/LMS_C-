@@ -7,8 +7,10 @@ using LmsAgent.Services;
 namespace LmsAgent.Forms.OptionsPages;
 
 /// <summary>
-/// 대분류 "네트워크" — 실시간 연동(Socket.IO) 서버, 업데이트 서버 주소를 설정하고 현재 버전을 표시합니다.
-/// 버전은 빌드에 고정된 값이라 수정할 수 없습니다.
+/// 대분류 "네트워크" — API 기준 주소, 업데이트 서버 주소를 설정하고 현재 버전을 표시합니다.
+/// 실시간 연동(웹소켓) 접속 주소는 접속할 때마다 발급받는 티켓에 담겨 오므로 여기서 따로
+/// 설정하지 않습니다(기기 ID/토큰은 "실시간 연동" 페이지에서 설정). 버전은 빌드에 고정된
+/// 값이라 수정할 수 없습니다.
 /// </summary>
 public sealed class NetworkOptionsPage : UserControl, IOptionsPage
 {
@@ -40,7 +42,7 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHeaderLabel(header);
         Controls.Add(header);
 
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 120, Text = "실시간 연동 서버" });
+        Controls.Add(new Label { Left = 20, Top = 23, Width = 120, Text = "API 기준 서버" });
         Controls.Add(new Label { Left = 20, Top = 58, Width = 120, Text = "업데이트 서버" });
         Controls.Add(new Label { Left = 20, Top = 93, Width = 120, Text = "프로그램 버전" });
         Controls.Add(_serverUrlBox);
@@ -57,8 +59,8 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         {
             Left = 20, Top = 172, Width = 380, Height = 55,
             Text = "로그인 시 \"서버 응답 형식이 올바르지 않습니다\" 오류가 나면 학사업무 웹 서비스\n" +
-                   "주소가 실시간 연동 서버와 다른 것입니다. 비워두면 실시간 연동 서버 주소에서 자동으로\n" +
-                   "유도하고, 값을 넣으면 그 주소를 그대로 사용합니다. 예) https://school.example.com/SchoolWork/WorkSupport",
+                   "주소가 위 API 기준 서버와 다른 것입니다. 비워두면 위 주소에서 자동으로 유도하고,\n" +
+                   "값을 넣으면 그 주소를 그대로 사용합니다. 예) https://school.example.com/SchoolWork/WorkSupport",
         };
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
@@ -105,7 +107,7 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
     {
         if (!Uri.TryCreate(_serverUrlBox.Text.Trim(), UriKind.Absolute, out _))
         {
-            return "실시간 연동 서버 주소가 올바르지 않습니다.";
+            return "API 기준 서버 주소가 올바르지 않습니다.";
         }
 
         if (!Uri.TryCreate(_updateUrlBox.Text.Trim(), UriKind.Absolute, out _))

@@ -30,12 +30,6 @@ public static class SettingsStore
                 var loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
                 if (loaded is not null)
                 {
-                    if (string.IsNullOrWhiteSpace(loaded.DeviceId))
-                    {
-                        loaded.DeviceId = Guid.NewGuid().ToString("N");
-                        Save(loaded);
-                    }
-
                     return loaded;
                 }
             }
@@ -45,7 +39,7 @@ public static class SettingsStore
             // 설정 파일이 손상된 경우 기본값으로 새로 생성합니다.
         }
 
-        var settings = new AppSettings { DeviceId = Guid.NewGuid().ToString("N") };
+        var settings = new AppSettings();
         Save(settings);
         return settings;
     }

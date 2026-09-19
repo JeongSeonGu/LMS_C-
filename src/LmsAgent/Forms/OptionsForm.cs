@@ -74,6 +74,7 @@ public sealed class OptionsForm : Form
             new DutyOptionsPage(),
             new PrintOptionsPage(),
             new NetworkOptionsPage(),
+            new RealtimeOptionsPage(),
             new LicenseOptionsPage(),
         };
 

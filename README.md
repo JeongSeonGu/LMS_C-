@@ -15,9 +15,10 @@ Windows 로그인 시 자동 실행되어 트레이(작업 표시줄 알림 영�
 ## 기술 스택
 
 - .NET 8 (Windows Forms), C# 12
-- `SocketIOClient`(NuGet) — node2.future-class.kr 실시간 연결(작업 요청/응답). 이 서버는 순수
-  WebSocket이 아니라 Socket.IO(엔진.IO 위에 이벤트 기반 프로토콜을 얹은 것)로 동작하므로,
-  `System.Net.WebSockets.ClientWebSocket`으로는 핸드셰이크 자체가 성립하지 않습니다.
+- `System.Net.WebSockets.ClientWebSocket` — node2.future-class.kr/ws-lms 실시간 연동(raw
+  WebSocket, Socket.IO 아님 — 웹 브라우저만 Socket.IO(`/ws-work`)로 접속합니다)
+- `System.Security.Cryptography.ProtectedData`(NuGet) — 실시간 연동용 기기 토큰을 DPAPI로
+  암호화해서 저장(`Configuration/DeviceTokenProtector.cs`)
 - `HttpClient` + 쿠키 세션(`WSSESSID`) — WorkSupport PHP API 연동
 - 트레이 아이콘 상주 방식 (메인 창 없이 `ApplicationContext`로 실행)
 
@@ -30,16 +31,18 @@ src/LmsAgent/
                                   (WorkSupport 코드의 viewer/externalLectureViewer.ico)
   App/TrayApplicationContext.cs  트레이 아이콘과 전체 메뉴, 백그라운드 서비스 구동
   Configuration/                 AppSettings(환경설정 항목), 로컬 설정 파일(JSON) 저장/로드
+                                  DeviceTokenProtector.cs — 실시간 연동 기기 토큰 DPAPI 암·복호화
   Networking/
-    WebSocketClientService.cs    node2.future-class.kr Socket.IO 연결("LMS_WindowAgent"
-                                  그룹 참가, "LMS_WindowAgent_ms" 메시지, 재연결은 라이브러리가 처리)
-    WorkSupportApiClient.cs      WorkSupport PHP API 클라이언트 (쿠키 세션 유지, 파일 다운로드)
-    WsEnvelope.cs / MessageTypes.cs  웹소켓 메시지 봉투/타입
+    WebSocketClientService.cs    node2.future-class.kr/ws-lms에 raw WebSocket으로 접속(티켓 발급,
+                                  구독, domain.event 수신 시 리비전 검사 후 재조회 신호, 지수 백오프 재접속)
+    WorkSupportApiClient.cs      WorkSupport PHP API 클라이언트 (쿠키 세션 유지, 파일 다운로드,
+                                  실시간 연동용 rt_ticket.php 발급 포함)
+    ConnectionState.cs           연결 상태 열거형(Disconnected/Connecting/Connected)
   Models/
     WorkSupport/                 서버 API 요청/응답 모델
                                   (User, Department, Event, Duty, SchoolInfo, SharedAccount,
                                    Request, Meetings, GuideCatalog, Training/요약용 모델)
-    TaskExchange.cs               웹소켓 작업 요청/응답 페이로드
+    Realtime/RealtimeModels.cs   실시간 연동 티켓/도메인 이벤트 모델(DeviceTicket, DomainEventData 등)
   Services/
     SessionManager.cs            로그인 세션, 담당업무(부서) 목록·색상, 권한 판정
     AutoStartManager.cs          Windows 시작 프로그램 등록(레지스트리)
@@ -66,7 +69,6 @@ src/LmsAgent/
     MeetingsForm.cs                            기본정보 &gt; 협의사항(조회 전용)
     GuideDocsForm.cs                           기본정보 &gt; 길라잡이 조회(문서함 트리 + 다운로드)
     StartupSummaryForm.cs                      로그인 직후 공지 요약 팝업
-    TaskRequestForm.cs           웹소켓으로 들어온 작업 요청 수락/거절 창
   Interop/NativeMethods.cs       오버레이 창을 배경으로 보내기 위한 최소 P/Invoke
 ```
 
@@ -180,7 +182,8 @@ src/LmsAgent/
 | 차시 | 하루 시간표(교시/점심시간) 등록, "차시 추가"(4교시 다음 점심시간 자동 추가), 쉬는 시간 자동 계산 |
 | 복무 | 출력 모니터, 교감 체크박스, 교장 체크박스, **투명도(30~100%)** |
 | 출력 | 프린터 선택, 나의 일간 일정 자동 출력 체크박스 |
-| 네트워크 | 웹소켓 서버, 업데이트 서버, WorkSupport 서버 주소(API, 선택), **교무업무 페이지**, **전자칠판 페이지**, 프로그램 버전(읽기 전용) |
+| 네트워크 | API 기준 서버, 업데이트 서버, WorkSupport 서버 주소(API, 선택), **교무업무 페이지**, **전자칠판 페이지**, 프로그램 버전(읽기 전용) |
+| 실시간 연동 | 실시간 연동(웹소켓)용 기기 ID·기기 토큰 입력(토큰은 DPAPI로 암호화 저장, 비어 있으면 이 기능만 비활성화) |
 | 라이센스 | 인증키 입력(학교 정보의 auth_key와 대조, 불일치 시 3분 후 자동 종료) |
 
 ## 배경화면형 학사달력
@@ -294,65 +297,95 @@ src/LmsAgent/
 
 각 항목은 해당 API가 실패해도 그 섹션만 비워두고 나머지는 정상적으로 보여줍니다.
 
-## 웹소켓(작업 요청) 기능
+## 실시간 연동 (학사일정·복무 ↔ 웹 브라우저)
 
-`node2.future-class.kr` 웹소켓 서버는 WorkSupport HTTP API와 별개로, 서버가 클라이언트에게
-작업을 요청하고(`task.request`) 클라이언트가 수락/거절로 응답(`task.response`)하는 실시간
-채널로 계속 사용합니다. 연결이 끊기면 지수 백오프(2초~30초)로 자동 재연결합니다.
+학사일정/복무 등을 Windows 쪽과 웹 브라우저(WorkSupport 웹페이지) 양쪽에서 실시간으로
+서로 반영되도록 하는 기능입니다. 서버(`node2.future-class.kr`, `future-class.kr`)는 이미
+구축·운영 중이며, 이 저장소(C# 클라이언트)만 그 규약에 맞추면 됩니다(서버는 수정 대상이
+아닙니다). 정확한 프로토콜 규약은 서버 팀이 작성한 `docs/웹소켓_데이터통신규칙.md`를 그대로
+따랐습니다 — 아래는 그 요약입니다.
 
-## 웹소켓 서버(Node.js) 연동 참고 구현
+### 핵심 오해 금지 사항 (중요)
 
-기존 서버는 서비스마다(`ClassVote` 등) 연결 파일 안에 `socket.on('서비스명', ...)`으로
-입장 처리를, `socket.on('서비스명_ms', ...)`으로 실제 메세지 처리를 등록해 두고, 메세지
-처리 자체는 `require`한 별도 파일(`ws_InteractiveMsg.js` 등)에 위임하는 구조입니다. 기존
-서비스와 충돌 없이, 같은 방식으로 **`LMS_WindowAgent`**라는 이름으로 추가했습니다.
+- **Socket.IO가 아니라 raw WebSocket입니다.** 웹 브라우저는 Socket.IO(`/ws-work`)로 붙지만,
+  Windows 클라이언트는 표준 `System.Net.WebSockets.ClientWebSocket`으로 **`/ws-lms`**에
+  붙습니다(SocketIOClient 같은 별도 패키지가 필요 없습니다).
+- 같은 서버의 **`/ws`는 이 프로그램과 무관한 다른 프로그램 전용**이라, 거기 붙으면
+  관계없는 메시지를 받게 됩니다. 반드시 `/ws-lms`를 써야 합니다.
+- 소켓으로는 **"무엇이 바뀌었다"는 사실만** 옵니다(payload에 실제 학사 데이터가 들어있지
+  않음). 알림을 받으면 기존 HTTP API를 다시 호출해서 화면을 갱신해야 하며, 이 원칙은
+  `WebSocketClientService.cs`에 그대로 구현되어 있습니다.
 
-| 파일 | 역할 |
+### 흐름
+
+```
+[1] 기기 등록 (서버 관리자가 최초 1회, schoolwork_realtime_devices에 device_id + 토큰 해시 등록)
+[2] 접속할 때마다 60초짜리 1회용 티켓 발급
+       POST {WorkSupport 기준주소}/php/auth/rt_ticket.php?mode=device
+            { "device_id": "...", "token": "<평문 토큰>" }
+       →   { token(60초), agentUrl, clientId, revisions, ... }
+[3] wss://node2.future-class.kr/ws-lms 에 헤더 x-auth-token: <위 token>으로 접속
+[4] 접속 직후 { "type": "subscribe", "modules": ["calendar", "notice"] } 전송
+[5] domain.event 수신 → 리비전 검사(§ 아래) 통과 시 → 기존 HTTP API 재조회 → 화면 갱신
+```
+
+### 기기 등록이 먼저 필요합니다 (서버 관리자 작업)
+
+이 기능을 쓰려면 **서버 관리자가 먼저** 기기를 등록해야 합니다(이 저장소로는 할 수 없는
+작업입니다):
+
+```bash
+openssl rand -hex 24                                          # 기기 토큰 평문 생성
+php -r "echo password_hash('토큰평문', PASSWORD_BCRYPT);"       # bcrypt 해시
+```
+
+```sql
+INSERT INTO schoolwork_realtime_devices
+  (device_id, device_name, user_id, token_hash, client_type, is_active, created_at)
+VALUES ('pc-teacher-401', '4학년 1반 교무용 PC', 12, '<위 해시>', 'windows', 1, NOW());
+```
+
+발급받은 **`device_id`(평문 그대로)**와 **토큰 평문**을 환경설정 &gt; **실시간 연동**
+페이지에 입력하면 됩니다(`Forms/OptionsPages/RealtimeOptionsPage.cs`). 토큰은 저장 시
+DPAPI(현재 Windows 사용자 계정 범위)로 암호화되어 `settings.json`에 저장되며, 저장 후에는
+평문이 화면에 다시 표시되지 않습니다(`Configuration/DeviceTokenProtector.cs`). 기기 ID/토큰이
+비어 있으면 이 기능은 그냥 비활성화되고, 그 외 모든 기능은 기존처럼 동작합니다.
+
+### 리비전 처리 (데이터가 어긋나지 않게 하는 핵심 규칙)
+
+`domain.event`를 받을 때마다 `WebSocketClientService.ShouldHandle`이 순서대로 검사합니다:
+
+1. `eventId`가 최근 200건 안에 있으면 버림(중복 수신)
+2. `origin.clientId`가 내 `clientId`와 같으면 버림(내가 만든 변경의 메아리) — 단, 리비전은 갱신
+3. `revision`이 내가 가진 값 이하이면 버림(순서가 뒤바뀐 오래된 이벤트)
+4. 리비전을 **먼저** 갱신
+5. 호출부(`TrayApplicationContext.OnRealtimeScopeChanged`)가 scope/type에 맞는 화면만 재조회
+
+재접속에 성공하면 새 티켓의 `revisions`를 로컬 값과 비교해서, 서버 값이 더 크면(끊긴 동안
+놓친 변경이 있으면) 그 scope도 갱신 신호를 보냅니다(재동기화).
+
+### 반영되는 범위
+
+| 받은 type | Windows 쪽에서 하는 일 |
 |---|---|
-| `nodejs-reference/LMS_WindowAgent-connection-snippet.js` | 기존 연결 파일의 `io.on('connection', socket => { ... })` 안에 그대로 붙여넣을 블록. `ClassVote`/`ClassVote_ms`와 완전히 같은 모양으로 `LMS_WindowAgent`/`LMS_WindowAgent_ms` 이벤트를 등록합니다. |
-| `nodejs-reference/ws_LmsWindowAgent.js` | `ws_InteractiveMsg.js`처럼 실제 메세지 처리만 담당하는 별도 모듈. `SocketMsg_LmsWindowAgentMsg(data, io, userList)`를 내보냅니다. |
+| `work.calendar.event.*` (학사 일정) | `ScheduleOverlayService.RefreshNow()` — 배경화면 학사달력 오버레이 즉시 갱신 |
+| `work.calendar.duty.*` (복무) | `DutyNotificationService.RefreshNow()` — 복무 알림 배너 즉시 재확인 |
+| `work.calendar.todo.*` (할일) | 이 프로그램에는 아직 전용 "할일" 화면이 없어, 현재는 오버레이만 함께 갱신됩니다(향후 할일 화면이 추가되면 여기 연결하면 됩니다) |
+| 그 외 / 재동기화 | 학사달력 오버레이 갱신 |
 
-적용 방법:
+반대 방향(Windows에서 등록 → 웹 브라우저에 반영)은 **별도 코드가 필요 없습니다.** 일정/복무
+등록·수정·삭제가 기존 WorkSupport HTTP API(`SchoolCalendar/php/api/*`)를 그대로 통해 이루어
+지고, 서버가 그 DB 커밋 시점에 자동으로 `domain.event`를 발행해 웹 브라우저(Socket.IO) 쪽에도
+전달하기 때문입니다(부록 B: DB 커밋 → outbox 적재 → 발행 순서).
 
-1. `nodejs-reference/LMS_WindowAgent-connection-snippet.js`의 내용을 기존 연결 파일의
-   `ClassVote` 블록 옆(같은 `socket` 스코프 안)에 그대로 붙여넣으세요.
-2. `nodejs-reference/ws_LmsWindowAgent.js`를 기존 `ws_InteractiveMsg.js`와 같은 폴더에
-   `ws_LmsWindowAgent.js`로 저장하세요.
-3. LmsAgent(Windows)가 `task.request`/`task.response`/`schedule.updated` 등을 보내면
-   `LMS_WindowAgent_ms` 이벤트로 도착하고, `ws_LmsWindowAgent.js`가 이를 해석해서 같은
-   `LMS_WindowAgent` 그룹(`userList`에서 `group`이 `Connection_LMS_WindowAgent`로
-   시작하는 소켓들)에게 그대로 릴레이합니다.
-4. 웹페이지(브라우저) 쪽에서도 같은 소켓에 접속해 `socket.emit('LMS_WindowAgent', {...})`로
-   같은 그룹에 입장해 두면, Windows 클라이언트가 보낸 `schedule.updated`를
-   `socket.on('LMS_WindowAgent_ms', ...)`로 받아 학사달력을 새로고침할 수 있습니다
-   (웹 쪽 자바스크립트 구현 자체는 이번 세션 범위 밖입니다).
+### 재접속 · 오류 처리
 
-> `userList`의 실제 필드명(`socketId`/`group` 등)은 기존 `Add_UserList` 구현에 맞춰
-> `ws_LmsWindowAgent.js`의 `broadcastToGroup` 함수를 조정해 주세요. 이 저장소에는
-> 기존 서버의 `Add_UserList`/`ws_InteractiveMsg.js` 코드가 없어 필드명을 정확히 맞추지
-> 못했고, 같은 소켓 채널을 여러 학교가 공유한다면 학교 단위 필터(`schoolId` 등)도
-> 함께 추가해야 합니다. `task.request`/`task.response`도 지금은 그룹 전체에 릴레이하도록
-> 되어 있는데, 특정 교사 PC 하나에만 보내야 한다면 대상 식별자로 필터링하도록 다듬으세요.
-
-### C# 클라이언트(LmsAgent) 쪽 변경 사항 — 반드시 함께 필요합니다
-
-서버가 Socket.IO로 동작하는 이상, LmsAgent도 순수 WebSocket이 아니라 Socket.IO 클라이언트여야
-접속이 성립합니다(Socket.IO는 엔진.IO 핸드셰이크와 이벤트 패킷 포맷이 있는 별도 프로토콜이라,
-`System.Net.WebSockets.ClientWebSocket`으로 연결하면 서버의 `io.on('connection', ...)`가
-아예 호출되지 않습니다). 그래서 `Networking/WebSocketClientService.cs`를 `SocketIOClient`
-NuGet 패키지 기반으로 다시 작성했습니다:
-
-- 연결되면 곧바로 `LMS_WindowAgent` 이벤트를 한 번 보내 그룹에 입장합니다
-  (`ClassVote`가 연결 시 `socket.emit('ClassVote', data)`를 보내는 것과 동일한 역할).
-- 이후 모든 메시지(`WsEnvelope` JSON)는 `LMS_WindowAgent_ms` 이벤트로 emit/on 합니다.
-- 재연결은 라이브러리의 내장 재연결(`Reconnection = true`)을 사용합니다.
-- 환경설정 &gt; 네트워크의 "실시간 연동 서버" 주소는 이제 `wss://host/ws` 형태가 아니라
-  Socket.IO 클라이언트가 요구하는 `https://host` 형태의 기준 주소로 입력해야 합니다
-  (`/socket.io/` 경로와 업그레이드 협상은 라이브러리가 알아서 처리합니다).
-
-`LMS_WindowAgent` 이벤트로 보내는 입장 payload(`schoolName`/`licenseKey`/`deviceId`)는
-`Add_UserList`가 실제로 기대하는 필드명을 몰라 임의로 정한 것이므로, 서버 쪽
-`Add_UserList` 구현을 확인해서 맞춰 주세요.
+- 연결이 끊기면 1초 → 2초 → 4초… 최대 30초까지 지수 백오프로 재접속하며, 접속마다 티켓을
+  새로 받습니다(저장하지 않음).
+- 인증 실패(401)가 5회 연속되면 설정 문제로 보고 재시도를 멈추고 로그를 남깁니다 — 기기
+  토큰이 틀렸거나, `is_active = 0`이거나, PC 시간이 서버와 크게 차이 나는 경우입니다.
+- 소켓이 아예 연결되지 않아도 나머지 기능(로그인, 일정/복무 등록, 조회 등)은 평소대로
+  동작합니다 — 실시간 연동은 어디까지나 편의 계층입니다.
 
 ## UI 디자인 개편 (하늘색·오렌지 테마, Modern Flat UI)
 
