@@ -55,6 +55,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _wsClient = new WebSocketClientService(_api, _settings);
         _wsClient.StateChanged += OnConnectionStateChanged;
         _wsClient.ScopeChanged += OnRealtimeScopeChanged;
+        _wsClient.LogMessage += RealtimeLog.Write;
 
         _dutyService = new DutyNotificationService(_api, _settings);
         _scheduleOverlayService = new ScheduleOverlayService(_api, _session, _settings);
@@ -115,6 +116,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("환경설정...", null, OnOptionsClicked));
         menu.Items.Add(new ToolStripMenuItem("업데이트 확인...", null, OnCheckUpdateClicked));
+        menu.Items.Add(new ToolStripMenuItem("실시간 연동 로그 열기...", null, OnOpenRealtimeLogClicked));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("종료", null, OnExitClicked));
 
@@ -427,6 +429,25 @@ public sealed class TrayApplicationContext : ApplicationContext
         {
             MessageBox.Show("현재 최신 버전을 사용 중입니다.", "업데이트 확인",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    private void OnOpenRealtimeLogClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (!System.IO.File.Exists(RealtimeLog.FilePath))
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(RealtimeLog.FilePath)!);
+                System.IO.File.WriteAllText(RealtimeLog.FilePath, "");
+            }
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(RealtimeLog.FilePath) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"로그 파일을 열 수 없습니다: {ex.Message}\n경로: {RealtimeLog.FilePath}",
+                "실시간 연동 로그", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 

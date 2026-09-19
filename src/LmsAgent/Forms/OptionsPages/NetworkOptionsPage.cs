@@ -14,20 +14,18 @@ namespace LmsAgent.Forms.OptionsPages;
 /// </summary>
 public sealed class NetworkOptionsPage : UserControl, IOptionsPage
 {
-    private const AnchorStyles StretchAnchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-
-    private readonly TextBox _serverUrlBox = new() { Left = 150, Top = 20, Width = 260, Anchor = StretchAnchor };
-    private readonly TextBox _updateUrlBox = new() { Left = 150, Top = 55, Width = 260, Anchor = StretchAnchor };
+    private readonly TextBox _serverUrlBox = new() { Left = 150, Top = 20, Width = 260 };
+    private readonly TextBox _updateUrlBox = new() { Left = 150, Top = 55, Width = 260 };
 
     private readonly TextBox _versionBox = new()
     {
-        Left = 150, Top = 90, Width = 260, ReadOnly = true, Anchor = StretchAnchor,
+        Left = 150, Top = 90, Width = 260, ReadOnly = true,
     };
 
-    private readonly TextBox _apiBaseUrlBox = new() { Left = 150, Top = 145, Width = 260, Anchor = StretchAnchor };
+    private readonly TextBox _apiBaseUrlBox = new() { Left = 150, Top = 145, Width = 260 };
 
-    private readonly TextBox _workSupportPageUrlBox = new() { Left = 150, Top = 240, Width = 260, Anchor = StretchAnchor };
-    private readonly TextBox _smartBoardPageUrlBox = new() { Left = 150, Top = 275, Width = 260, Anchor = StretchAnchor };
+    private readonly TextBox _workSupportPageUrlBox = new() { Left = 150, Top = 240, Width = 260 };
+    private readonly TextBox _smartBoardPageUrlBox = new() { Left = 150, Top = 275, Width = 260 };
 
     public string CategoryName => "네트워크";
 
