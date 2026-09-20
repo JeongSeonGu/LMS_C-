@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using LmsAgent.Interop;
 using LmsAgent.Services;
+using Timer = System.Windows.Forms.Timer;
 
 namespace LmsAgent.Forms;
 

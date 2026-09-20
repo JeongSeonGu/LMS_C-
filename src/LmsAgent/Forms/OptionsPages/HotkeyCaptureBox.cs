@@ -10,15 +10,17 @@ namespace LmsAgent.Forms.OptionsPages;
 /// </summary>
 public sealed class HotkeyCaptureBox : TextBox
 {
-    private const string PlaceholderText = "클릭 후 키 입력...";
-    private const string NeedsModifierText = "Ctrl/Alt/Shift 중 하나 이상과 함께 눌러주세요";
+    // TextBox.PlaceholderText(입력 전 흐린 안내 문구 표시용 내장 속성)와 이름이 겹치지 않도록
+    // PlaceholderHint로 이름 지었다(실제로는 Text에 그대로 넣는 방식이라 그 내장 속성과는 무관함).
+    private const string PlaceholderHint = "클릭 후 키 입력...";
+    private const string NeedsModifierHint = "Ctrl/Alt/Shift 중 하나 이상과 함께 눌러주세요";
 
     public HotkeyBinding? Binding { get; private set; }
 
     public HotkeyCaptureBox()
     {
         ReadOnly = true;
-        Text = PlaceholderText;
+        Text = PlaceholderHint;
     }
 
     protected override bool IsInputKey(Keys keyData) => true;
@@ -31,7 +33,7 @@ public sealed class HotkeyCaptureBox : TextBox
         if (e.KeyCode == Keys.Escape)
         {
             Binding = null;
-            Text = PlaceholderText;
+            Text = PlaceholderHint;
             return;
         }
 
@@ -53,7 +55,7 @@ public sealed class HotkeyCaptureBox : TextBox
         if (!candidate.HasModifier)
         {
             Binding = null;
-            Text = NeedsModifierText;
+            Text = NeedsModifierHint;
             return;
         }
 
@@ -66,7 +68,7 @@ public sealed class HotkeyCaptureBox : TextBox
         if (binding.Key == Keys.None)
         {
             Binding = null;
-            Text = PlaceholderText;
+            Text = PlaceholderHint;
         }
         else
         {
