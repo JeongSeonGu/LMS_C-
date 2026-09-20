@@ -52,7 +52,7 @@ public sealed class DutyManageInfo
     [JsonPropertyName("canManage")]
     public bool CanManage { get; set; }
 
-    /// <summary>기록 권한이 있을 때의 근거 직위("교장" 등) 또는 관리자 계정이면 "admin".</summary>
-    [JsonPropertyName("position")]
-    public string? Position { get; set; }
+    /// <summary>허용 사유 — "admin" · 직위명("교장" 등) · "개별 허용". 권한이 없으면 null.</summary>
+    [JsonPropertyName("grant")]
+    public string? Grant { get; set; }
 }

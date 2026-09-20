@@ -34,6 +34,15 @@ public sealed class WorkSupportApiClient : IDisposable
 
     public Uri BaseUri { get; }
 
+    /// <summary>
+    /// 실시간 연동 소켓 접속 시 티켓 응답으로 받은 clientId(웹소켓_데이터통신규칙.md §3).
+    /// 저장(POST) 요청에 그대로 실어 보내면 서버가 "이 PC가 일으킨 변경"임을 알고
+    /// 같은 PC에게는 도메인 이벤트를 다시 보내지 않는다(에코 억제, 연동가이드.md §4).
+    /// 아직 소켓에 접속하지 못했으면 null이며, 이 경우 헤더 없이 저장 요청을 보낸다
+    /// (치명적이지 않고 목록이 한 번 더 갱신되는 정도의 부작용만 있다).
+    /// </summary>
+    public string? ClientId { get; set; }
+
     /// <param name="serverUrl">웹소켓 서버 주소. apiBaseUrlOverride가 없으면 이 주소에서 API 기준 주소를 유도한다.</param>
     /// <param name="apiBaseUrlOverride">
     /// WorkSupport 웹 서비스의 실제 접속 주소(예: "https://school.example.com/SchoolWork/WorkSupport").
@@ -212,14 +221,68 @@ public sealed class WorkSupportApiClient : IDisposable
         GcalEventId = ev.GcalEventId,
     };
 
-    /// <summary>
-    /// 할일 목록. ⚠️ todos.php의 정확한 응답 필드 스펙 문서가 없어 <see cref="Models.WorkSupport.TodoItem"/>의
-    /// 주석에 적힌 가정(events.php/duty_status.php와 같은 규칙)으로 구현했습니다.
-    /// </summary>
+    /// <summary>할일 전체 목록(미완료 → 마감일 순 정렬). 조회는 권한과 무관하게 누구나 가능합니다.</summary>
     public async Task<ApiEnvelope<List<TodoItem>>> GetTodosAsync()
     {
         return await GetJsonAsync<List<TodoItem>>("SchoolCalendar/php/api/todos.php?action=list").ConfigureAwait(false);
     }
+
+    /// <summary>현재 로그인 계정이 할일을 기록할 수 있는지(복무와 같은 권한) 확인합니다.</summary>
+    public async Task<ApiEnvelope<TodoManageInfo>> GetTodoCanManageAsync()
+    {
+        return await GetJsonAsync<TodoManageInfo>(
+            "SchoolCalendar/php/api/todos.php?action=can_manage").ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<TodoWriteResult>> AddTodoAsync(TodoItem todo)
+    {
+        var request = ToTodoWriteRequest("add", todo, includeDone: false);
+        return await PostJsonAsync<TodoWriteRequest, TodoWriteResult>(
+            "SchoolCalendar/php/api/todos.php", request).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// ★ 전체 교체입니다(연동가이드.md §5-5). list로 받은 객체를 통째로 넘겨야 하며,
+    /// 빠뜨린 필드는 서버에서 비워집니다. gcalTaskId/gcalTaskListId는 받은 값을 그대로 되돌려 보내십시오.
+    /// </summary>
+    public async Task<ApiEnvelope<TodoWriteResult>> UpdateTodoAsync(TodoItem todo)
+    {
+        var request = ToTodoWriteRequest("update", todo, includeDone: true);
+        return await PostJsonAsync<TodoWriteRequest, TodoWriteResult>(
+            "SchoolCalendar/php/api/todos.php", request).ConfigureAwait(false);
+    }
+
+    /// <summary>완료 체크박스 전용 — id/done만 보내 다른 필드를 건드리지 않습니다(§5-4).</summary>
+    public async Task<ApiEnvelope<TodoWriteResult>> ToggleTodoAsync(int id, bool done)
+    {
+        var request = new TodoToggleRequest { Action = "update", Id = id, Done = done };
+        return await PostJsonAsync<TodoToggleRequest, TodoWriteResult>(
+            "SchoolCalendar/php/api/todos.php", request).ConfigureAwait(false);
+    }
+
+    public async Task<ApiEnvelope<TodoWriteResult>> DeleteTodoAsync(int id)
+    {
+        var request = new TodoDeleteRequest { Action = "delete", Id = id };
+        return await PostJsonAsync<TodoDeleteRequest, TodoWriteResult>(
+            "SchoolCalendar/php/api/todos.php", request).ConfigureAwait(false);
+    }
+
+    private static TodoWriteRequest ToTodoWriteRequest(string action, TodoItem t, bool includeDone) => new()
+    {
+        Action = action,
+        Id = t.Id > 0 ? t.Id : null,
+        Title = t.Title,
+        DueDate = t.DueDate,
+        DeptId = t.DeptId,
+        Priority = t.Priority,
+        Note = t.Note,
+        // 추가 시점에는 서버가 done을 기본값(false)으로 두므로 보내지 않는다. 수정 시에는
+        // 현재 완료 상태를 함께 보내지 않으면 §5-5에 따라 미완료로 되돌아간다.
+        Done = includeDone ? t.Done : null,
+        // 의미를 알 필요 없이 받은 값을 그대로 되돌려 보낸다(§5-5). 신규 등록 시에는 항상 null.
+        GcalTaskId = t.GcalTaskId,
+        GcalTaskListId = t.GcalTaskListId,
+    };
 
     /* =========================================================
      * 복무 (연가/출장/조퇴)
@@ -422,7 +485,9 @@ public sealed class WorkSupportApiClient : IDisposable
 
     private async Task<ApiEnvelope<T>> PostFormAsync<T>(string relativePath, FormUrlEncodedContent content)
     {
-        using var response = await _http.PostAsync(Resolve(relativePath), content).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Post, Resolve(relativePath)) { Content = content };
+        AddClientHeaders(request);
+        using var response = await _http.SendAsync(request).ConfigureAwait(false);
         var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         return Deserialize<T>(json, response.StatusCode, Resolve(relativePath));
     }
@@ -431,9 +496,21 @@ public sealed class WorkSupportApiClient : IDisposable
     {
         var json = JsonSerializer.Serialize(body);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
-        using var response = await _http.PostAsync(Resolve(relativePath), content).ConfigureAwait(false);
+        using var request = new HttpRequestMessage(HttpMethod.Post, Resolve(relativePath)) { Content = content };
+        AddClientHeaders(request);
+        using var response = await _http.SendAsync(request).ConfigureAwait(false);
         var responseJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         return Deserialize<TRes>(responseJson, response.StatusCode, Resolve(relativePath));
+    }
+
+    /// <summary>연동가이드.md §4 — 저장 요청에 붙이는 에코 억제 헤더.</summary>
+    private void AddClientHeaders(HttpRequestMessage request)
+    {
+        request.Headers.Add("X-WS-Client-Type", "windows");
+        if (!string.IsNullOrEmpty(ClientId))
+        {
+            request.Headers.Add("X-WS-Client-Id", ClientId);
+        }
     }
 
     /// <summary>
@@ -481,7 +558,7 @@ public sealed class WorkSupportApiClient : IDisposable
     private sealed class EventWriteRequest
     {
         [JsonPropertyName("action")] public string Action { get; set; } = "";
-        [JsonPropertyName("id")] public int? Id { get; set; }
+        [JsonPropertyName("id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Id { get; set; }
         [JsonPropertyName("title")] public string Title { get; set; } = "";
         [JsonPropertyName("start")] public string Start { get; set; } = "";
         [JsonPropertyName("end")] public string End { get; set; } = "";
@@ -503,7 +580,7 @@ public sealed class WorkSupportApiClient : IDisposable
     private sealed class DutyWriteRequest
     {
         [JsonPropertyName("action")] public string Action { get; set; } = "";
-        [JsonPropertyName("id")] public int? Id { get; set; }
+        [JsonPropertyName("id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Id { get; set; }
         [JsonPropertyName("date")] public string Date { get; set; } = "";
         [JsonPropertyName("position")] public string Position { get; set; } = "";
         [JsonPropertyName("dutyType")] public string DutyType { get; set; } = "";
@@ -517,6 +594,34 @@ public sealed class WorkSupportApiClient : IDisposable
         [JsonPropertyName("action")] public string Action { get; set; } = "";
         [JsonPropertyName("id")] public int Id { get; set; }
     }
+
+    private sealed class TodoWriteRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public int? Id { get; set; }
+        [JsonPropertyName("title")] public string Title { get; set; } = "";
+        [JsonPropertyName("dueDate")] public string? DueDate { get; set; }
+        [JsonPropertyName("deptId")] public int? DeptId { get; set; }
+        [JsonPropertyName("priority")] public string? Priority { get; set; }
+        [JsonPropertyName("note")] public string? Note { get; set; }
+        [JsonPropertyName("done")] [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? Done { get; set; }
+        [JsonPropertyName("gcalTaskId")] public string? GcalTaskId { get; set; }
+        [JsonPropertyName("gcalTaskListId")] public string? GcalTaskListId { get; set; }
+    }
+
+    /// <summary>완료 체크박스 전용 요청(§5-4) — 다른 필드를 함께 보내지 않는다.</summary>
+    private sealed class TodoToggleRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("done")] public bool Done { get; set; }
+    }
+
+    private sealed class TodoDeleteRequest
+    {
+        [JsonPropertyName("action")] public string Action { get; set; } = "";
+        [JsonPropertyName("id")] public int Id { get; set; }
+    }
 }
 
 public sealed class EventWriteResult
@@ -526,6 +631,12 @@ public sealed class EventWriteResult
 }
 
 public sealed class DutyWriteResult
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("uuid")] public string? Uuid { get; set; }
+}
+
+public sealed class TodoWriteResult
 {
     [JsonPropertyName("id")] public int Id { get; set; }
     [JsonPropertyName("uuid")] public string? Uuid { get; set; }

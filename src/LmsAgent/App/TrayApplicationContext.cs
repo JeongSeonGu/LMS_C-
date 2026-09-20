@@ -108,6 +108,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         scheduleMenu.DropDownItems.Add(new ToolStripMenuItem("일정 목록...", null, OnScheduleListClicked));
         scheduleMenu.DropDownItems.Add(new ToolStripSeparator());
         scheduleMenu.DropDownItems.Add(new ToolStripMenuItem("복무등록...", null, OnDutyRegisterClicked));
+        scheduleMenu.DropDownItems.Add(new ToolStripMenuItem("할일등록...", null, OnTodoRegisterClicked));
         menu.Items.Add(scheduleMenu);
 
         var userMenu = new ToolStripMenuItem("사용자 정보");
@@ -440,6 +441,18 @@ public sealed class TrayApplicationContext : ApplicationContext
         }
 
         using var form = new DutyRegisterForm(_api);
+        form.ShowDialog();
+    }
+
+    private void OnTodoRegisterClicked(object? sender, EventArgs e)
+    {
+        if (!_session.IsLoggedIn)
+        {
+            MessageBox.Show("먼저 로그인해주세요.", "할일등록", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        using var form = new TodoRegisterForm(_api, _session);
         form.ShowDialog();
     }
 

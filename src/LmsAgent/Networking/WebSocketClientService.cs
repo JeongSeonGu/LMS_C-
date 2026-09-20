@@ -100,6 +100,8 @@ public sealed class WebSocketClientService : IAsyncDisposable
                 var ticket = await IssueTicketAsync(token).ConfigureAwait(false);
                 MergeRevisions(ticket.Revisions);
                 _myClientId = ticket.ClientId;
+                // 저장(HTTP POST) 요청에도 같은 clientId를 실어 보내 에코를 억제한다(연동가이드.md §4).
+                _api.ClientId = ticket.ClientId;
                 _consecutiveAuthFailures = 0;
 
                 _socket = new ClientWebSocket();

@@ -64,6 +64,7 @@ src/LmsAgent/
     ScheduleListForm.cs / MonthCalendarView.cs / EventDetailForm.cs
                                                 학사 일정 월간 달력 보기, 일정 칩, 상세 팝업
     DutyRegisterForm.cs / DutyEditForm.cs      학사 일정 &gt; 복무등록(교장/교감/교무부장/행정실장의 연가·출장·조퇴 기록)
+    TodoRegisterForm.cs / TodoEditForm.cs      학사 일정 &gt; 할일등록(제목/마감일/담당업무/우선순위, 기록 권한 게이팅)
     OptionsForm.cs / OptionsPages/*.cs         환경설정(Visual Studio 옵션 창 스타일)
                                                 OptionsPages/TaskOptionsPage.cs, ShortcutOptionsPage.cs,
                                                 HotkeyCaptureBox.cs 포함
@@ -89,6 +90,7 @@ src/LmsAgent/
   - 일정 등록...
   - 일정 목록... (구글 캘린더 스타일 월간 보기, 등록/수정/삭제)
   - 복무등록... (교장/교감/교무부장/행정실장의 연가·출장·조퇴 기록, 아래 "복무등록" 참고)
+  - 할일등록... (제목/마감일/담당업무/우선순위 기록, 아래 "할일등록" 참고)
 - **사용자 정보**
   - 로그인...
   - 정보 수정... (로그인 후 활성화)
@@ -127,10 +129,19 @@ src/LmsAgent/
 | 담당업무 목록 | `GET SchoolCalendar/php/api/departments.php?action=list` | 학사 일정에 연결할 "업무" 목록과 **색상**(`color`) |
 | 교사 상세(담당업무 다건) | `GET SchoolCalendar/php/api/teachers.php?action=get&id=` | school_teacher_departments(N:M) 기준 본인 담당업무 전체 조회 |
 | 학사 일정 목록/등록/수정/삭제 | `SchoolCalendar/php/api/events.php` (`action=list\|add\|update\|delete`) | 학사 일정 CRUD, `deptId`가 담당업무 |
-| 할일 목록 (조회 전용) | `GET SchoolCalendar/php/api/todos.php?action=list` | school_todos CRUD API 중 조회만 사용. `deptId`가 담당업무, `done`이 완료 여부(DB의 status를 변환해 내려줌) |
+| 할일 목록 | `GET SchoolCalendar/php/api/todos.php?action=list` | school_todos 전체 목록(미완료→마감일 순). `deptId`가 담당업무, `done`이 완료 여부(DB의 status를 변환해 내려줌). 조회는 권한과 무관하게 누구나 가능 |
+| 할일 기록 권한 확인 | `GET SchoolCalendar/php/api/todos.php?action=can_manage` | 복무와 같은 권한 체계(관리자·교장/교감/교무부장/행정실장·개별 허용) |
+| 할일 등록/수정/삭제 | `POST SchoolCalendar/php/api/todos.php` (`action=add\|update\|delete`, JSON body) | **수정은 전체 교체**라 서버가 최종 판단하는 기록 권한이 있는 계정만 가능. 완료 체크박스는 `{action:"update", id, done}`만 보내는 전용 경로 사용 |
 | 복무(연가/출장/조퇴) 목록 | `GET SchoolCalendar/php/api/duty_status.php?action=list` | 교장/교감 등 복무 변동사항(전체 사용자 열람 가능) |
 | 복무 기록 권한 확인 | `GET SchoolCalendar/php/api/duty_status.php?action=can_manage` | 현재 계정이 기록 가능한지, 어떤 직위 자격인지 확인 |
 | 복무 기록 등록/수정/삭제 | `POST SchoolCalendar/php/api/duty_status.php` (`action=add\|update\|delete`, JSON body) | `role=admin` 또는 `school_teachers.position`이 교장/교감/교무부장/행정실장인 계정만 가능 |
+
+> **쓰기(저장)와 읽기(조회)는 인증이 다릅니다.** 조회·저장 모두 로그인 세션 쿠키(`WSSESSID`)로
+> 이루어지고(웹소켓 티켓과는 무관), 저장(POST) 요청에는 실시간 연동 소켓 접속으로 받은
+> `clientId`를 `X-WS-Client-Id` 헤더(+ `X-WS-Client-Type: windows`)에 실어 보내
+> 서버가 "이 PC가 일으킨 변경"임을 알고 같은 PC에게는 도메인 이벤트를 다시 보내지 않도록
+> 합니다(에코 억제, `WorkSupportApiClient.ClientId`). 아직 소켓에 접속하지 못한 상태라도
+> 헤더 없이 저장은 정상 동작하며, 목록이 한 번 더 갱신되는 정도의 부작용만 있습니다.
 
 ### 기본정보 메뉴 (신규)
 
@@ -288,15 +299,42 @@ src/LmsAgent/
   입력하지 않으면 시간 없이 종일 기록으로 저장되고, 체크를 해제하면 시작/종료 시간을
   따로 입력할 수 있습니다(종료가 시작보다 빠르면 저장하지 않습니다).
 
+## 할일등록
+
+트레이 메뉴 "학사 일정 &gt; 할일등록..."에서 학교 전체가 함께 보는 할일 목록을 조회하고
+등록/수정/삭제, 완료 체크를 할 수 있습니다. 복무등록과 동일한 권한 모델(연동가이드.md §2-4)을
+그대로 따릅니다.
+
+- **조회는 로그인한 누구나** 가능합니다(`todos.php?action=list`, 전체 목록을 미완료→마감일
+  순으로 받아 그대로 보여줍니다).
+- **등록/수정/삭제 및 완료 체크는 서버가 최종 판단합니다.** 화면을 열면 먼저
+  `action=can_manage`로 현재 계정의 기록 권한(관리자 · 교장/교감/교무부장/행정실장 ·
+  관리자가 사용자 관리에서 "할일·복무 기록"을 개별 허용한 계정)을 확인하고, 권한이 없으면
+  등록/수정/삭제 버튼과 완료 체크박스를 모두 비활성화한 채 조회만 제공합니다.
+- 등록/수정 창에서는 **제목**(필수), **마감일**(선택, "없음" 체크로 생략), **담당업무**
+  (`departments.php` 목록, 선택), **우선순위**(높음/보통/낮음), **메모**(선택)를 입력합니다.
+- **수정은 서버가 전체 교체로 처리합니다**(연동가이드.md §5-5) — 제목만 바꿔서 보내면
+  마감일·담당업무·메모 등 나머지 필드가 비워지므로, 목록에서 받은 객체를 그대로 들고 있다가
+  사용자가 바꾼 항목만 반영한 전체 객체를 저장합니다. Google Tasks 연동 필드(`gcalTaskId`,
+  `gcalTaskListId`)도 의미를 해석하지 않고 받은 값 그대로 되돌려 보냅니다.
+- 목록의 **완료 체크박스**를 직접 누르면 다른 필드를 건드리지 않도록 `{action:"update",
+  id, done}`만 보내는 전용 경로로 즉시 저장됩니다(§5-4). 저장에 실패하면 체크 상태를
+  원래대로 되돌립니다.
+- 할일·복무는 **Google Calendar와 연동하지 않습니다**(학사 일정만 연동됩니다) — C# 쪽에서
+  Google Calendar API를 직접 호출하거나 `channels` 같은 값을 보낼 필요가 없습니다.
+
 ## 복무 알림 배너
 
 복무 설정에서 교감/교장 체크박스를 켜면 15분마다 해당 직위의 출장·연가 기록을 확인해서
 
-- **하루 전**: 화면 우측 상단에 "내일은 OOO선생님이 출장/연가 예정입니다" 안내 배너를,
-- **당일**: "OOO선생님이 오늘 출장/연가로 부재중입니다" 배너를(강조색)
+- **하루 전**: 화면 우측 상단에 "내일 부재 예정" 안내 배너를,
+- **당일**: "오늘 부재 안내" 배너를(강조색)
 
-항상 위(`TopMost`, 포커스는 가져가지 않음)로, 설정한 **투명도**로 표시합니다. 조퇴는
-"하루 전 예고"의 성격이 아니라 당일 알림 대상에서 제외했습니다.
+모던 스타일의 카드형 토스트로 표시합니다 — 둥근 모서리, 실제 창 그림자(`CS_DROPSHADOW`),
+긴급도에 따라 색이 바뀌는 원형 아이콘 배지, 굵은 제목 + 상세 설명 2단 구성, 표시될 때
+부드러운 페이드인 애니메이션을 적용했습니다(`Forms/DutyBannerForm.cs`). 클릭하면 바로
+닫힙니다. 항상 위(`TopMost`, 포커스는 가져가지 않음)로, 설정한 **투명도**로 표시합니다.
+조퇴는 "하루 전 예고"의 성격이 아니라 당일 알림 대상에서 제외했습니다.
 
 ## 업무 일지 (포스트잇 오버레이)
 
@@ -425,7 +463,9 @@ n8n의 "CREATE 후처리 → gcalEventId DB 저장" 단계가 새로 채워 넣�
 서로 반영되도록 하는 기능입니다. 서버(`node2.future-class.kr`, `future-class.kr`)는 이미
 구축·운영 중이며, 이 저장소(C# 클라이언트)만 그 규약에 맞추면 됩니다(서버는 수정 대상이
 아닙니다). 정확한 프로토콜 규약은 서버 팀이 작성한 `docs/웹소켓_데이터통신규칙.md`를 그대로
-따랐습니다 — 아래는 그 요약입니다.
+따랐습니다 — 아래는 그 요약입니다. 복무·할일의 **저장(쓰기)** 쪽 인증·권한·API 계약은
+같은 팀이 작성한 `docs/복무_할일_연동가이드.md`를 그대로 따랐습니다(요약은 "할일등록"·
+"복무등록" 절 참고).
 
 ### 핵심 오해 금지 사항 (중요)
 

@@ -45,4 +45,26 @@ public sealed class TodoItem
 
     [JsonPropertyName("createdBy")]
     public int? CreatedBy { get; set; }
+
+    /// <summary>서버가 허용하는 우선순위 값(다른 값을 보내면 서버가 medium으로 바꾼다).</summary>
+    public static readonly string[] Priorities = { "high", "medium", "low" };
+
+    public static string PriorityLabel(string? priority) => priority switch
+    {
+        "high" => "높음",
+        "low" => "낮음",
+        _ => "보통",
+    };
+}
+
+/// <summary>현재 로그인 계정이 할일을 기록(등록/수정/삭제)할 수 있는지 여부.
+/// 복무와 같은 권한(관리자 · 교장/교감/교무부장/행정실장 · 개별 허용)을 공유한다.</summary>
+public sealed class TodoManageInfo
+{
+    [JsonPropertyName("canManage")]
+    public bool CanManage { get; set; }
+
+    /// <summary>허용 사유 — "admin" · 직위명 · "개별 허용". 권한이 없으면 null.</summary>
+    [JsonPropertyName("grant")]
+    public string? Grant { get; set; }
 }
