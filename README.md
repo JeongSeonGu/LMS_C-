@@ -127,6 +127,7 @@ src/LmsAgent/
 | 담당업무 목록 | `GET SchoolCalendar/php/api/departments.php?action=list` | 학사 일정에 연결할 "업무" 목록과 **색상**(`color`) |
 | 교사 상세(담당업무 다건) | `GET SchoolCalendar/php/api/teachers.php?action=get&id=` | school_teacher_departments(N:M) 기준 본인 담당업무 전체 조회 |
 | 학사 일정 목록/등록/수정/삭제 | `SchoolCalendar/php/api/events.php` (`action=list\|add\|update\|delete`) | 학사 일정 CRUD, `deptId`가 담당업무 |
+| 할일 목록 (조회 전용) | `GET SchoolCalendar/php/api/todos.php?action=list` | school_todos CRUD API 중 조회만 사용. `deptId`가 담당업무, `done`이 완료 여부(DB의 status를 변환해 내려줌) |
 | 복무(연가/출장/조퇴) 목록 | `GET SchoolCalendar/php/api/duty_status.php?action=list` | 교장/교감 등 복무 변동사항(전체 사용자 열람 가능) |
 | 복무 기록 권한 확인 | `GET SchoolCalendar/php/api/duty_status.php?action=can_manage` | 현재 계정이 기록 가능한지, 어떤 직위 자격인지 확인 |
 | 복무 기록 등록/수정/삭제 | `POST SchoolCalendar/php/api/duty_status.php` (`action=add\|update\|delete`, JSON body) | `role=admin` 또는 `school_teachers.position`이 교장/교감/교무부장/행정실장인 계정만 가능 |
@@ -297,15 +298,18 @@ src/LmsAgent/
 표시 내용은 세 가지를 날짜별로 묶어서 보여줍니다:
 
 - **내 담당업무 관련 학사일정** — `school_events.deptId`가 내 담당업무(복수 가능) 중 하나인 일정
-- **내가 해야 할 할일** — 할일의 담당 교사 목록에 내가 포함되고 아직 완료되지 않은 것
+- **내가 해야 할 할일** — `school_todos.deptId`가 내 담당업무 중 하나이고 아직 완료(`done`)되지
+  않은 것. 할일은 학사일정과 마찬가지로 **담당업무(부서) 단위**로 배정되며, 개인별 담당자
+  목록 같은 것은 없습니다.
 - **나에게 알림으로 지정된 일정** — `SchoolEvent.NotifyTargets.TeacherIds`에 내 교사 id가 포함된 일정
 
 설명(메모)이 있는 항목은 📝 아이콘으로 표시되며, 클릭하면 그 자리에서 설명이 펼쳐집니다.
 출력 단위가 **일 단위**면 오늘 하루, **주 단위**면 이번 주(월~일) 범위만 보여줍니다.
 
-> ⚠️ 할일 조회(`SchoolCalendar/php/api/todos.php?action=list`)는 이 저장소에 정확한 응답
-> 필드 스펙 문서가 없어, events.php/duty_status.php와 같은 규칙을 가정해 구현했습니다
-> (`Models/WorkSupport/TodoItem.cs` 참고). 실제 필드명이 다르면 이 모델만 조정하면 됩니다.
+할일 조회는 실제 서버의 `SchoolCalendar/php/api/todos.php`(action=list) 코드를 확인해
+그대로 맞췄습니다(`Models/WorkSupport/TodoItem.cs`) — 서버 DB 컬럼은 `status`('pending'/'done')
+이지만 이 API가 응답에서 `done`(boolean)으로 변환해 내려주므로, 별도의 API 파일을 새로
+만들 필요 없이 이 엔드포인트를 그대로 씁니다.
 
 ## 단축키 (전역 핫키)
 

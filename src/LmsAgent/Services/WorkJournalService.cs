@@ -123,26 +123,24 @@ public sealed class WorkJournalService : IDisposable
                 }
             }
 
-            if (myTeacherId is int myId)
+            var todoResult = await _api.GetTodosAsync().ConfigureAwait(false);
+            if (todoResult.Ok && todoResult.Data is not null)
             {
-                var todoResult = await _api.GetTodosAsync().ConfigureAwait(false);
-                if (todoResult.Ok && todoResult.Data is not null)
+                foreach (var todo in todoResult.Data)
                 {
-                    foreach (var todo in todoResult.Data)
+                    // 할일은 school_events처럼 담당업무(deptId) 단위로 배정된다(개인별 담당자 목록 없음).
+                    if (todo.Done || todo.DeptId is not int deptId || !_session.MyDeptIds.Contains(deptId))
                     {
-                        if (todo.IsDone || !todo.AssigneeTeacherIds.Contains(myId))
-                        {
-                            continue;
-                        }
-
-                        var date = DateTime.TryParse(todo.Date, out var parsed) ? parsed.Date : DateTime.Today;
-                        if (date < rangeStart || date > rangeEnd)
-                        {
-                            continue;
-                        }
-
-                        items.Add(new WorkJournalItem(date, $"[할일] {todo.Title}", todo.Note));
+                        continue;
                     }
+
+                    var date = DateTime.TryParse(todo.DueDate, out var parsed) ? parsed.Date : DateTime.Today;
+                    if (date < rangeStart || date > rangeEnd)
+                    {
+                        continue;
+                    }
+
+                    items.Add(new WorkJournalItem(date, $"[할일] {todo.Title}", todo.Note));
                 }
             }
         }
