@@ -81,9 +81,11 @@ public sealed class LicenseGuardService : IDisposable
             _exitTimer.Start();
             SetStatus(LicenseStatus.Invalid);
         }
-        catch
+        catch (Exception ex)
         {
             // 조회 실패(네트워크 오류 등)만으로는 강제 종료하지 않고, 상태도 그대로 둡니다.
+            // 다만 원인을 알 수 없어 계속 "확인 전"으로 보이는 문제를 진단할 수 있도록 로그는 남긴다.
+            RealtimeLog.Write($"[라이센스] 학교 정보 조회 실패: {ex.Message}");
         }
     }
 

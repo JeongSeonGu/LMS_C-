@@ -485,7 +485,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void OnOptionsClicked(object? sender, EventArgs e)
     {
-        using var form = new OptionsForm(_settings);
+        using var form = new OptionsForm(_settings, _api);
         if (form.ShowDialog() == DialogResult.OK)
         {
             SettingsStore.Save(_settings);
@@ -493,6 +493,13 @@ public sealed class TrayApplicationContext : ApplicationContext
             _scheduleOverlayService.ApplySettings();
             _workJournalService.ApplySettings();
             RegisterHotkeys();
+
+            // 라이센스 인증키는 로그인 직후에만 검사했었는데, 이미 로그인한 상태에서
+            // 환경설정으로 인증키를 새로 입력/수정하는 경우가 더 흔하므로 저장 시에도 다시 검사한다.
+            if (_session.IsLoggedIn)
+            {
+                _ = _licenseGuardService.CheckAsync();
+            }
 
             MessageBox.Show(
                 "설정이 저장되었습니다. 웹소켓 서버/WorkSupport 서버 주소 변경 사항은 " +

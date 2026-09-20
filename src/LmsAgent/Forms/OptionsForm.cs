@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Forms.OptionsPages;
+using LmsAgent.Networking;
 using LmsAgent.Services;
 
 namespace LmsAgent.Forms;
@@ -52,7 +53,7 @@ public sealed class OptionsForm : Form
     private readonly Button _cancelButton = new() { Width = 80, Height = 30, Text = "취소", Margin = new Padding(0, 10, 8, 10) };
     private readonly Button _applyButton = new() { Width = 80, Height = 30, Text = "적용", Margin = new Padding(0, 10, 12, 10) };
 
-    public OptionsForm(AppSettings settings)
+    public OptionsForm(AppSettings settings, WorkSupportApiClient api)
     {
         _settings = settings;
 
@@ -77,7 +78,7 @@ public sealed class OptionsForm : Form
             new NetworkOptionsPage(),
             new RealtimeOptionsPage(),
             new ShortcutOptionsPage(),
-            new LicenseOptionsPage(),
+            new LicenseOptionsPage(api),
         };
 
         foreach (var page in _pages)
