@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace LmsAgent.Configuration;
 
@@ -7,6 +8,44 @@ public enum ScheduleOutputUnit
 {
     Week,
     Month,
+}
+
+public enum TaskJournalOutputUnit
+{
+    Day,
+    Week,
+}
+
+/// <summary>
+/// 전역 단축키 하나의 설정. 요청사항대로 특수키(Ctrl/Alt/Shift) 중 최소 하나 + 일반 키
+/// 조합만 유효한 것으로 취급합니다(<see cref="LmsAgent.Services.GlobalHotkeyService"/>가 강제).
+/// </summary>
+public sealed class HotkeyBinding
+{
+    public bool Enabled { get; set; }
+    public bool Ctrl { get; set; }
+    public bool Alt { get; set; }
+    public bool Shift { get; set; }
+    public Keys Key { get; set; } = Keys.None;
+
+    public bool HasModifier => Ctrl || Alt || Shift;
+
+    public bool IsUsable => Enabled && Key != Keys.None && HasModifier;
+
+    public override string ToString()
+    {
+        if (Key == Keys.None)
+        {
+            return "(설정 안 됨)";
+        }
+
+        var parts = new List<string>();
+        if (Ctrl) parts.Add("Ctrl");
+        if (Alt) parts.Add("Alt");
+        if (Shift) parts.Add("Shift");
+        parts.Add(Key.ToString());
+        return string.Join(" + ", parts);
+    }
 }
 
 /// <summary>
@@ -19,7 +58,7 @@ public sealed class AppSettings
     /// <summary>
     /// <see cref="ApiBaseUrlOverride"/>가 비어 있을 때 WorkSupport API 기준 주소를 유도하는 데만
     /// 쓰는 폴백 주소입니다. 실시간 연동(웹소켓) 접속 주소는 더 이상 이 값이 아니라, 접속할 때마다
-    /// 발급받는 티켓(<see cref="DeviceTicket"/>)의 agentUrl을 그대로 씁니다 — 서버가 Socket.IO가
+    /// 발급받는 티켓(<see cref="LmsAgent.Models.Realtime.DeviceTicket"/>)의 agentUrl을 그대로 씁니다 — 서버가 Socket.IO가
     /// 아니라 raw WebSocket(node2.future-class.kr/ws-lms)으로 동작하기 때문입니다.
     /// </summary>
     public string ServerUrl { get; set; } = "https://node2.future-class.kr";
@@ -128,4 +167,27 @@ public sealed class AppSettings
     // ── 라이센스 ──────────────────────────────────────────────
     /// <summary>학교 정보(auth_key)와 대조할 인증키. 값이 다르면 프로그램이 3분 뒤 자동 종료됩니다.</summary>
     public string? LicenseKey { get; set; }
+
+    // ── 업무 ──────────────────────────────────────────────────
+    /// <summary>체크 시 업무 일지(포스트잇 스타일 오버레이)를 상시 표시합니다.</summary>
+    public bool TaskJournalEnabled { get; set; }
+
+    /// <summary>업무 일지를 띄울 모니터의 Screen.AllScreens 인덱스.</summary>
+    public int TaskJournalMonitorIndex { get; set; }
+
+    /// <summary>업무 일지에 보여줄 일정 범위(일 단위/주 단위).</summary>
+    public TaskJournalOutputUnit TaskJournalOutputUnit { get; set; } = TaskJournalOutputUnit.Day;
+
+    /// <summary>업무 일지의 불투명도(0~100%). 100이면 완전 불투명.</summary>
+    public int TaskJournalOpacityPercent { get; set; } = 92;
+
+    // ── 단축키 ────────────────────────────────────────────────
+    /// <summary>학사달력 보기 창을 토글하는 전역 단축키.</summary>
+    public HotkeyBinding ScheduleViewHotkey { get; set; } = new();
+
+    /// <summary>관리자 복무상황 보기 창을 토글하는 전역 단축키.</summary>
+    public HotkeyBinding DutyStatusViewHotkey { get; set; } = new();
+
+    /// <summary>업무 일지를 토글하는 전역 단축키.</summary>
+    public HotkeyBinding TaskJournalViewHotkey { get; set; } = new();
 }

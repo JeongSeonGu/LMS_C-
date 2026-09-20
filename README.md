@@ -49,6 +49,9 @@ src/LmsAgent/
     UpdateService.cs             업데이트 확인/다운로드/적용
     DutyNotificationService.cs   복무(출장/연가) 알림 배너(투명도 적용)
     ScheduleOverlayService.cs    학사달력 배경화면형 오버레이(DB 색상·투명도 적용)
+    WorkJournalService.cs        업무 일지 데이터 조회·필터링(담당업무/할일/알림 대상)
+    GlobalHotkeyService.cs       Win32 RegisterHotKey 기반 전역 단축키 등록/해제
+    RealtimeLog.cs                실시간 연동 연결/오류 로그 파일 기록
     AutoPrintService.cs          평일 08:30~10:00 일정 자동 인쇄
     PrintingService.cs           프린터 출력 렌더링
     DisplayHelper.cs             다중 모니터 열거
@@ -62,7 +65,10 @@ src/LmsAgent/
                                                 학사 일정 월간 달력 보기, 일정 칩, 상세 팝업
     DutyRegisterForm.cs / DutyEditForm.cs      학사 일정 &gt; 복무등록(교장/교감/교무부장/행정실장의 연가·출장·조퇴 기록)
     OptionsForm.cs / OptionsPages/*.cs         환경설정(Visual Studio 옵션 창 스타일)
+                                                OptionsPages/TaskOptionsPage.cs, ShortcutOptionsPage.cs,
+                                                HotkeyCaptureBox.cs 포함
     DutyBannerForm.cs / ScheduleOverlayForm.cs 복무 알림 배너 / 학사달력 오버레이 창
+    WorkJournalForm.cs                         업무 일지 포스트잇 오버레이(항상 최상단)
     SchoolInfoForm.cs                          기본정보 &gt; 학교기본정보(조회 전용 모달)
     SharedAccountsForm.cs                      기본정보 &gt; 공통계정(조회 전용 + 비밀번호 보기)
     RequestsForm.cs / RequestEditForm.cs       기본정보 &gt; 요청사항(조회/등록/본인 것 수정·삭제)
@@ -168,7 +174,9 @@ src/LmsAgent/
   건드릴 수 없습니다. **관리자(role=admin) 계정은 모든 일정을 등록/수정/삭제**할 수 있습니다.
 - 담당업무는 `school_teacher_departments`(N:M) 기준으로 여러 개일 수 있어, 로그인 직후
   `teachers.php?action=get`으로 본인의 전체 담당업무 목록을 다시 불러와 판정합니다
-  (교사 레코드가 없으면 로그인 프로필의 대표 담당업무 하나만 사용).
+  (교사 레코드가 없으면 로그인 프로필의 대표 담당업무 하나만 사용). 사용자 정보 수정
+  화면의 "담당업무" 표시도 이 다건 목록을 쉼표로 이어서 보여줍니다(`UserInfoForm.ResolveDeptNames`) —
+  `profile.php`가 주는 `dept_name`은 대표 업무 하나뿐이라, 이전에는 화면에 한 개만 보였습니다.
 
 ## 환경설정 (Visual Studio 옵션 창 스타일)
 
@@ -181,9 +189,11 @@ src/LmsAgent/
 | 학사일정 | 출력 모니터, 출력 단위(주 단위/월 단위), 배경화면 출력 체크박스, **투명도(10~100%)** |
 | 차시 | 하루 시간표(교시/점심시간) 등록, "차시 추가"(4교시 다음 점심시간 자동 추가), 쉬는 시간 자동 계산 |
 | 복무 | 출력 모니터, 교감 체크박스, 교장 체크박스, **투명도(30~100%)** |
+| 업무 | "업무 및 할일 모니터 출력" 체크박스, 출력 모니터, 출력 단위(일 단위/주 단위), **투명도(20~100%)** |
 | 출력 | 프린터 선택, 나의 일간 일정 자동 출력 체크박스 |
 | 네트워크 | API 기준 서버, 업데이트 서버, WorkSupport 서버 주소(API, 선택), **교무업무 페이지**, **전자칠판 페이지**, 프로그램 버전(읽기 전용) |
 | 실시간 연동 | 실시간 연동(웹소켓)용 기기 ID·기기 토큰 입력(토큰은 DPAPI로 암호화 저장, 비어 있으면 이 기능만 비활성화) |
+| 단축키 | 학사달력보기 / 관리자 복무상황 보기 / 업무 일지 보기 전역 단축키 활성화·설정(각각 Ctrl/Alt/Shift 조합 + 키) |
 | 라이센스 | 인증키 입력(학교 정보의 auth_key와 대조, 불일치 시 3분 후 자동 종료) |
 
 ## 배경화면형 학사달력
@@ -276,6 +286,40 @@ src/LmsAgent/
 
 항상 위(`TopMost`, 포커스는 가져가지 않음)로, 설정한 **투명도**로 표시합니다. 조퇴는
 "하루 전 예고"의 성격이 아니라 당일 알림 대상에서 제외했습니다.
+
+## 업무 일지 (포스트잇 오버레이)
+
+환경설정 &gt; 업무에서 "업무 및 할일 모니터 출력"을 체크하면, 선택한 모니터 왼쪽 위에
+포스트잇 스타일의 업무 일지 창(`Forms/WorkJournalForm.cs`)이 항상 최상단(topmost)으로
+표시됩니다. 다른 프로그램의 topmost 창에 가려지는 것을 막기 위해 3초마다 `TopMost`를
+껐다 켜서 계속 맨 위로 끌어올립니다("Move To Top").
+
+표시 내용은 세 가지를 날짜별로 묶어서 보여줍니다:
+
+- **내 담당업무 관련 학사일정** — `school_events.deptId`가 내 담당업무(복수 가능) 중 하나인 일정
+- **내가 해야 할 할일** — 할일의 담당 교사 목록에 내가 포함되고 아직 완료되지 않은 것
+- **나에게 알림으로 지정된 일정** — `SchoolEvent.NotifyTargets.TeacherIds`에 내 교사 id가 포함된 일정
+
+설명(메모)이 있는 항목은 📝 아이콘으로 표시되며, 클릭하면 그 자리에서 설명이 펼쳐집니다.
+출력 단위가 **일 단위**면 오늘 하루, **주 단위**면 이번 주(월~일) 범위만 보여줍니다.
+
+> ⚠️ 할일 조회(`SchoolCalendar/php/api/todos.php?action=list`)는 이 저장소에 정확한 응답
+> 필드 스펙 문서가 없어, events.php/duty_status.php와 같은 규칙을 가정해 구현했습니다
+> (`Models/WorkSupport/TodoItem.cs` 참고). 실제 필드명이 다르면 이 모델만 조정하면 됩니다.
+
+## 단축키 (전역 핫키)
+
+환경설정 &gt; 단축키에서 세 가지 창을 전역 단축키로 나타내거나 숨길 수 있습니다: 학사달력보기,
+관리자 복무상황 보기(복무등록 창), 업무 일지 보기. 각 항목은 활성화 체크박스와 입력칸으로
+구성되며, 입력칸을 클릭한 뒤 원하는 키를 누르면 그대로 저장됩니다(Esc로 지우기).
+
+- 반드시 Ctrl/Alt/Shift 중 하나 이상 + 다른 키의 조합이어야 합니다(`HotkeyBinding.IsUsable`).
+- Win32 `RegisterHotKey`/`WM_HOTKEY` 기반(`Services/GlobalHotkeyService.cs`)이라, 트레이
+  상주 상태에서 다른 프로그램에 포커스가 있어도 동작합니다.
+- 이미 다른 프로그램이 선점한 조합은 조용히 등록에 실패합니다(예외를 던지지 않음) — 등록이
+  안 되면 다른 조합으로 바꿔서 다시 시도하세요.
+- 학사달력보기/관리자 복무상황 보기는 트레이 메뉴에서 여는 것과는 별개의 인스턴스를
+  비모달로 띄워 두고 보이기/숨기기만 토글합니다(닫기 버튼도 실제로 닫지 않고 숨김 처리).
 
 ## 학사 일정 자동 인쇄
 

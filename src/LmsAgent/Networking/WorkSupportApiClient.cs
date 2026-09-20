@@ -208,6 +208,15 @@ public sealed class WorkSupportApiClient : IDisposable
         CreatedBy = ev.CreatedBy,
     };
 
+    /// <summary>
+    /// 할일 목록. ⚠️ todos.php의 정확한 응답 필드 스펙 문서가 없어 <see cref="Models.WorkSupport.TodoItem"/>의
+    /// 주석에 적힌 가정(events.php/duty_status.php와 같은 규칙)으로 구현했습니다.
+    /// </summary>
+    public async Task<ApiEnvelope<List<TodoItem>>> GetTodosAsync()
+    {
+        return await GetJsonAsync<List<TodoItem>>("SchoolCalendar/php/api/todos.php?action=list").ConfigureAwait(false);
+    }
+
     /* =========================================================
      * 복무 (연가/출장/조퇴)
      * ========================================================= */

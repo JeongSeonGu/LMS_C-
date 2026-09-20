@@ -28,7 +28,13 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly LicenseGuardService _licenseGuardService;
     private readonly BreakBoardService _breakBoardService;
     private readonly ScheduleReminderService _scheduleReminderService;
+    private readonly WorkJournalService _workJournalService;
+    private readonly GlobalHotkeyService _hotkeyService = new();
     private readonly NotifyIcon _trayIcon;
+
+    // "학사달력보기"/"관리자 복무상황 보기" 단축키 토글용 인스턴스(트레이 메뉴의 모달 흐름과는 별개).
+    private ScheduleListForm? _scheduleHotkeyForm;
+    private DutyRegisterForm? _dutyHotkeyForm;
 
     private readonly ToolStripMenuItem _connectionStatusItem;
     private readonly ToolStripMenuItem _licenseStatusItem;
@@ -63,6 +69,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _licenseGuardService = new LicenseGuardService(_api, _settings);
         _breakBoardService = new BreakBoardService(_settings);
         _scheduleReminderService = new ScheduleReminderService(_api, _session, _settings);
+        _workJournalService = new WorkJournalService(_api, _session, _settings);
 
         _session.SessionChanged += OnSessionChanged;
         _session.ScheduleChanged += OnScheduleChanged;
@@ -135,6 +142,79 @@ public sealed class TrayApplicationContext : ApplicationContext
         _scheduleOverlayService.ApplySettings();
         _breakBoardService.Start();
         _scheduleReminderService.Start();
+        _workJournalService.ApplySettings();
+        RegisterHotkeys();
+    }
+
+    /// <summary>단축키 설정이 바뀔 때(환경설정 저장 시)마다 전부 해제 후 다시 등록합니다.</summary>
+    private void RegisterHotkeys()
+    {
+        _hotkeyService.UnregisterAll();
+        _hotkeyService.Register(_settings.ScheduleViewHotkey, ToggleScheduleListWindow);
+        _hotkeyService.Register(_settings.DutyStatusViewHotkey, ToggleDutyStatusWindow);
+        _hotkeyService.Register(_settings.TaskJournalViewHotkey, () => _workJournalService.ToggleVisible());
+    }
+
+    private void ToggleScheduleListWindow()
+    {
+        if (!_session.IsLoggedIn)
+        {
+            MessageBox.Show("먼저 로그인해주세요.", "학사 일정", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        if (_scheduleHotkeyForm is null || _scheduleHotkeyForm.IsDisposed)
+        {
+            _scheduleHotkeyForm = new ScheduleListForm(_api, _session);
+            _scheduleHotkeyForm.FormClosing += (_, e) =>
+            {
+                e.Cancel = true;
+                _scheduleHotkeyForm?.Hide();
+            };
+            _scheduleHotkeyForm.Show();
+            return;
+        }
+
+        if (_scheduleHotkeyForm.Visible)
+        {
+            _scheduleHotkeyForm.Hide();
+        }
+        else
+        {
+            _scheduleHotkeyForm.Show();
+            _scheduleHotkeyForm.Activate();
+        }
+    }
+
+    private void ToggleDutyStatusWindow()
+    {
+        if (!_session.IsLoggedIn)
+        {
+            MessageBox.Show("먼저 로그인해주세요.", "복무상황", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        if (_dutyHotkeyForm is null || _dutyHotkeyForm.IsDisposed)
+        {
+            _dutyHotkeyForm = new DutyRegisterForm(_api);
+            _dutyHotkeyForm.FormClosing += (_, e) =>
+            {
+                e.Cancel = true;
+                _dutyHotkeyForm?.Hide();
+            };
+            _dutyHotkeyForm.Show();
+            return;
+        }
+
+        if (_dutyHotkeyForm.Visible)
+        {
+            _dutyHotkeyForm.Hide();
+        }
+        else
+        {
+            _dutyHotkeyForm.Show();
+            _dutyHotkeyForm.Activate();
+        }
     }
 
     private void RunOnUiThread(Action action)
@@ -219,6 +299,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     private void OnScheduleChanged()
     {
         _scheduleOverlayService.RefreshNow();
+        _workJournalService.RefreshNow();
     }
 
     /// <summary>
@@ -246,6 +327,9 @@ public sealed class TrayApplicationContext : ApplicationContext
                 // 배경화면 학사달력 오버레이를 즉시 갱신한다.
                 _scheduleOverlayService.RefreshNow();
             }
+
+            // 할일/알림 대상 일정도 업무 일지에 반영되므로 항상 함께 갱신한다.
+            _workJournalService.RefreshNow();
         });
     }
 
@@ -407,6 +491,8 @@ public sealed class TrayApplicationContext : ApplicationContext
             SettingsStore.Save(_settings);
             AutoStartManager.SetEnabled(_settings.AutoStartWithWindows);
             _scheduleOverlayService.ApplySettings();
+            _workJournalService.ApplySettings();
+            RegisterHotkeys();
 
             MessageBox.Show(
                 "설정이 저장되었습니다. 웹소켓 서버/WorkSupport 서버 주소 변경 사항은 " +
@@ -460,6 +546,10 @@ public sealed class TrayApplicationContext : ApplicationContext
         _licenseGuardService.Dispose();
         _breakBoardService.Dispose();
         _scheduleReminderService.Dispose();
+        _workJournalService.Dispose();
+        _hotkeyService.Dispose();
+        _scheduleHotkeyForm?.Dispose();
+        _dutyHotkeyForm?.Dispose();
         _api.Dispose();
         _ = _wsClient.StopAsync();
         ExitThread();

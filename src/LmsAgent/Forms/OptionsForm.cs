@@ -72,9 +72,11 @@ public sealed class OptionsForm : Form
             new ScheduleOptionsPage(),
             new PeriodOptionsPage(),
             new DutyOptionsPage(),
+            new TaskOptionsPage(),
             new PrintOptionsPage(),
             new NetworkOptionsPage(),
             new RealtimeOptionsPage(),
+            new ShortcutOptionsPage(),
             new LicenseOptionsPage(),
         };
 

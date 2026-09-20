@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 using LmsAgent.Networking;
 using LmsAgent.Services;
@@ -22,7 +23,7 @@ public sealed class UserInfoForm : Form
 
     private readonly Label _nameValueLabel = new() { Left = 100, Top = 8, Width = 220 };
     private readonly Label _positionValueLabel = new() { Left = 100, Top = 33, Width = 220 };
-    private readonly Label _deptValueLabel = new() { Left = 100, Top = 58, Width = 220 };
+    private readonly Label _deptValueLabel = new() { Left = 100, Top = 58, Width = 240, AutoEllipsis = true };
 
     private readonly TextBox _loginIdBox = new() { Left = 100, Top = 91, Width = 220 };
     private readonly TextBox _contactBox = new() { Left = 100, Top = 121, Width = 220 };
@@ -107,7 +108,7 @@ public sealed class UserInfoForm : Form
             var profile = result.Data;
             _nameValueLabel.Text = profile.Name;
             _positionValueLabel.Text = profile.Position ?? "-";
-            _deptValueLabel.Text = profile.DeptName ?? "관련 업무 없음";
+            _deptValueLabel.Text = ResolveDeptNames(profile.DeptName);
             _loginIdBox.Text = profile.LoginId;
             _contactBox.Text = profile.Contact ?? "";
             _statusLabel.Text = "";
@@ -117,6 +118,29 @@ public sealed class UserInfoForm : Form
             _statusLabel.ForeColor = UiTheme.Danger;
             _statusLabel.Text = $"오류: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// profile.php는 대표 담당업무 하나(dept_name)만 주지만, 담당업무는 실제로는 N:M이라
+    /// 여러 개를 가질 수 있다. 로그인 시 이미 채워둔 SessionManager의 담당업무 집합(여러 개
+    /// 가능)을 우선 쓰고, 교사 레코드가 없는 계정 등 그 정보가 없을 때만 profile.dept_name으로
+    /// 대체한다.
+    /// </summary>
+    private string ResolveDeptNames(string? fallbackDeptName)
+    {
+        if (_session.MyTeacher is { DeptIds.Count: > 0 } teacher)
+        {
+            var names = teacher.DeptIds
+                .Select(id => _session.Departments.FirstOrDefault(d => d.Id == id)?.Name ?? $"업무 #{id}")
+                .ToList();
+
+            if (names.Count > 0)
+            {
+                return string.Join(", ", names);
+            }
+        }
+
+        return fallbackDeptName ?? "관련 업무 없음";
     }
 
     private async void OnSaveClicked(object? sender, EventArgs e)
