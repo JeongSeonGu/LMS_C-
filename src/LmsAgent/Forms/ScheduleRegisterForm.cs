@@ -301,6 +301,9 @@ public sealed class ScheduleRegisterForm : Form
                 Title = title,
                 DeptId = selectedDeptId,
                 CreatedBy = _editing?.CreatedBy ?? _session.Profile?.UserId,
+                // 기존 값을 그대로 실어 보내야, 이미 Google Calendar와 연동된 일정을 이 창에서
+                // 수정했을 때 그 연동이 끊기지 않는다(WorkSupportApiClient.ToWriteRequest 참고).
+                GcalEventId = _editing?.GcalEventId,
                 AllDay = allDay,
                 Start = start.ToString("yyyy-MM-ddTHH:mm"),
                 End = end.ToString("yyyy-MM-ddTHH:mm"),

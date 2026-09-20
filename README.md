@@ -259,9 +259,11 @@ src/LmsAgent/
   원인을 `%AppData%\LmsAgent\realtime.log`(트레이 메뉴 "실시간 연동 로그 열기...")에
   남깁니다 — "확인 전"에 계속 머물러 있다면 이 로그를 먼저 확인하세요.
 
-트레이 메뉴의 연결 상태 바로 아래에 라이센스 인증 상태를 작은 원형 아이콘으로 보여주는
-항목이 있습니다(조회 전용). 회색은 아직 확인 전/서버에 인증키 미설정, 초록 체크는 인증됨,
-빨간 x는 인증 실패를 뜻합니다.
+트레이 메뉴의 연결 상태 바로 아래에 라이센스 인증 상태를 작은 원형 아이콘 + **색이 있는
+글자**로 보여주는 항목이 있습니다(조회 전용). 회색은 아직 확인 전/서버에 인증키 미설정,
+**초록**(체크 아이콘)은 인증됨, **빨강**(x 아이콘)은 인증 실패를 뜻합니다. 연결 상태 항목과
+마찬가지로 `Enabled=false`라 기본 렌더러가 텍스트를 항상 회색으로만 그리는 것을,
+`ToolStripRenderer.RenderItemText`에서 직접 색을 지정해 우회했습니다.
 
 ## 일정 시작 알림
 
@@ -332,6 +334,70 @@ src/LmsAgent/
   안 되면 다른 조합으로 바꿔서 다시 시도하세요.
 - 학사달력보기/관리자 복무상황 보기는 트레이 메뉴에서 여는 것과는 별개의 인스턴스를
   비모달로 띄워 두고 보이기/숨기기만 토글합니다(닫기 버튼도 실제로 닫지 않고 숨김 처리).
+
+## Google Calendar 연동 (n8n)
+
+현재 3자 동기화 구도는 이렇습니다:
+
+```
+Google Calendar ⇄ (n8n) ⇄ 학사달력(DB) ⇄ (실시간 연동/HTTP API) ⇄ LmsAgent(C#)
+```
+
+- **학사달력 → Google Calendar**: 이미 동작 중(첨부해 주신 n8n 워크플로만 참고, 저장소에
+  포함하지는 않음). `events.php`의 add/update/delete가 `gcal_event_push.php`를 호출해
+  n8n 웹훅(`gcal-event-push`)을 트리거하고, n8n이 `action`(create/update/delete)에 따라
+  Google Calendar API를 호출한 뒤, 생성 시엔 `gcal_event_push_callback.php`로 새로
+  발급된 `gcalEventId`를 DB에 다시 저장합니다.
+- **학사달력 ⇄ LmsAgent(C#)**: 이미 동작 중(이 저장소의 실시간 연동 기능). `events.php`가
+  DB에 쓸 때마다 `rt_emit(...)`으로 `domain.event`를 발행하고, LmsAgent가 이를 구독해
+  재조회합니다 — **어느 클라이언트가 그 HTTP API를 호출했는지는 상관없습니다.**
+
+이 두 가지가 이미 되어 있다는 것이 핵심입니다. 즉 **"C# 로컬에서 작성한 내용을 Google
+Calendar에 반영"은 이미 자동으로 되어야 합니다** — LmsAgent가 일정을 등록/수정할 때도
+결국 웹 UI와 똑같은 `events.php`를 호출하기 때문에, `events.php`가 호출자를 가리지 않고
+매번 Google 푸시를 트리거한다면 별도 코드 없이 이미 동작할 것입니다. **먼저 이것부터
+테스트해 보세요**: LmsAgent에서 일정을 하나 등록해 보고 Google Calendar에 나타나는지
+확인하십시오. 안 나타난다면 `events.php`가 호출자(웹/로컬)를 구분해서 특정 조건에서만
+푸시를 트리거하고 있다는 뜻이니, 그 조건을 다시 봐야 합니다(서버 쪽 확인 사항).
+
+### 반대 방향: Google Calendar → 학사달력 → LmsAgent(C#)
+
+이 방향의 n8n 워크플로(Google Calendar 트리거 → 학사달력 DB 반영)는 이번에 공유해 주신
+파일과는 반대 방향이라 내용을 보지 못했습니다. 다만 원리는 동일합니다 — **이 워크플로가
+DB에 새 일정을 쓸 때 어떤 경로를 쓰느냐**에 따라 결과가 갈립니다.
+
+**n8n(및 그 워크플로가 호출하는 PHP)에서 해야 할 일:**
+
+1. 그 워크플로가 이미 `events.php?action=add`(같은 엔드포인트)를 호출해서 DB에 쓰고
+   있다면 — **아무것도 더 할 필요가 없습니다.** `events.php`가 쓰기 시점에 자동으로
+   `rt_emit(...)`을 호출하므로, LmsAgent도 웹도 동시에 알림을 받습니다.
+2. 만약 그 워크플로가 별도의 PHP 스크립트나 n8n의 DB 노드로 `school_events` 테이블에
+   **직접** INSERT하고 있다면(=`events.php`를 거치지 않는다면), 그 경로에는 실시간 알림이
+   빠져 있을 가능성이 큽니다. 이 경우 다음 중 하나로 고쳐야 합니다:
+   - **권장**: 그 스크립트/노드를 없애고 `events.php?action=add`를 HTTP Request 노드로
+     호출하도록 바꾸십시오(검증·리비전 관리·실시간 알림을 전부 공짜로 얻습니다).
+   - 또는 기존 스크립트를 유지해야 한다면, DB INSERT 직후에 `todos.php`의 `addTodo()`가
+     하는 것과 똑같이 아래를 추가하십시오:
+     ```php
+     require_once __DIR__ . '/../../../php/features/_realtime.php';
+     rt_emit(['type'=>'work.calendar.event.created','scope'=>'calendar','op'=>'created',
+              'resource'=>['type'=>'school_events','id'=>$newId],'rooms'=>['module:calendar']]);
+     ```
+
+**LmsAgent(C#)에서 할 일: 없습니다.** `WebSocketClientService`/`TrayApplicationContext`는
+이미 `work.calendar.event.*` 타입의 `domain.event`를 받으면 출처(웹/모바일/n8n/Google 등)를
+가리지 않고 학사달력 오버레이·업무 일지를 재조회하도록 되어 있습니다(§실시간 연동). 위
+1번 또는 2번 조건만 만족하면, Google Calendar에 새 일정을 넣는 즉시 LmsAgent 화면에도
+반영됩니다 — 이 저장소를 다시 빌드할 필요조차 없습니다.
+
+### 이번에 함께 고친 것 — Google 연동 끊김 위험
+
+`events.php`의 update가 `todos.php`의 `updateTodo()`와 같은 방식(요청 필드로 컬럼을
+그대로 덮어씀)이라면, LmsAgent에서 **이미 Google Calendar와 연동된 일정을 수정**할 때
+`gcalEventId`를 함께 보내지 않으면 그 값이 `null`로 지워져 연동이 끊길 위험이 있었습니다.
+`ScheduleRegisterForm`이 수정 시 기존 `gcalEventId`를 그대로 실어 보내도록 고쳤습니다
+(`WorkSupportApiClient.ToWriteRequest`). 신규 등록 시에는 당연히 비어 있는 채로 보내고,
+n8n의 "CREATE 후처리 → gcalEventId DB 저장" 단계가 새로 채워 넣습니다.
 
 ## 학사 일정 자동 인쇄
 

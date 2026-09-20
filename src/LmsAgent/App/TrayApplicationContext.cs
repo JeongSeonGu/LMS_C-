@@ -39,10 +39,11 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _connectionStatusItem;
     private readonly ToolStripMenuItem _licenseStatusItem;
 
-    // 연결 상태 항목은 Enabled=false(클릭 방지용)라서 ToolStripProfessionalRenderer가
+    // 연결 상태/라이센스 상태 항목은 Enabled=false(클릭 방지용)라서 ToolStripProfessionalRenderer가
     // 기본적으로 회색으로만 그린다. RenderItemText에서 이 색으로 직접 덮어써서
-    // 연결됨(초록)/연결 끊김(빨강)이 눈에 띄도록 한다.
+    // 연결됨(초록)/연결 끊김(빨강), 인증됨(초록)/인증 실패(빨강)이 눈에 띄도록 한다.
     private Color _connectionStatusColor = UiTheme.TextSecondary;
+    private Color _licenseStatusColor = UiTheme.TextSecondary;
     private readonly ToolStripMenuItem _loginItem;
     private readonly ToolStripMenuItem _userInfoItem;
 
@@ -82,6 +83,10 @@ public sealed class TrayApplicationContext : ApplicationContext
             if (ReferenceEquals(e.Item, _connectionStatusItem))
             {
                 e.TextColor = _connectionStatusColor;
+            }
+            else if (ReferenceEquals(e.Item, _licenseStatusItem))
+            {
+                e.TextColor = _licenseStatusColor;
             }
         };
 
@@ -285,6 +290,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             };
 
             _licenseStatusItem.Text = text;
+            _licenseStatusColor = color;
             _licenseStatusItem.Image?.Dispose();
             _licenseStatusItem.Image = UiTheme.CreateStatusIcon(color, mark);
         });

@@ -206,6 +206,10 @@ public sealed class WorkSupportApiClient : IDisposable
         // events.php의 addEvent()는 createdBy가 비어 있으면 미리 초기화되지 않은 $pdo를
         // 참조하는 서버측 결함이 있어(관리자 계정 fallback 조회), 항상 값을 채워 보낸다.
         CreatedBy = ev.CreatedBy,
+        // todos.php의 updateTodo()가 gcal_task_id를 요청 필드값(없으면 null)으로 그대로
+        // 덮어쓰는 것과 같은 방식이라면, 이 값을 안 보내고 수정하면 Google Calendar 연동이
+        // 끊길 수 있다. 기존 값을 그대로 실어 보내 안전하게 유지한다(신규 등록 시에는 null).
+        GcalEventId = ev.GcalEventId,
     };
 
     /// <summary>
@@ -487,6 +491,7 @@ public sealed class WorkSupportApiClient : IDisposable
         [JsonPropertyName("note")] public string? Note { get; set; }
         [JsonPropertyName("notifyBefore")] public int NotifyBefore { get; set; }
         [JsonPropertyName("createdBy")] public int? CreatedBy { get; set; }
+        [JsonPropertyName("gcalEventId")] public string? GcalEventId { get; set; }
     }
 
     private sealed class EventDeleteRequest
