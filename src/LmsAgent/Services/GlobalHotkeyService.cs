@@ -36,7 +36,7 @@ public sealed class GlobalHotkeyService : IDisposable
                 HotkeyPressed?.Invoke(m.WParam.ToInt32());
             }
 
-            base.WndProc(m);
+            base.WndProc(ref m);
         }
     }
 
