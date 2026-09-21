@@ -18,7 +18,7 @@ public sealed class DutyBannerForm : Form
 {
     private const int CornerRadius = 16;
     private const int IconDiameter = 36;
-    private const int Margin = 14;
+    private const int ContentMargin = 14;
 
     private static readonly Font HeadlineFont = new("맑은 고딕", 10.5F, FontStyle.Bold);
     private static readonly Font DetailFont = new("맑은 고딕", 9.5F);
@@ -166,7 +166,7 @@ public sealed class DutyBannerForm : Form
         }
 
         // 아이콘 배지
-        var iconRect = new Rectangle(Margin + 6, (bounds.Height - IconDiameter) / 2, IconDiameter, IconDiameter);
+        var iconRect = new Rectangle(ContentMargin + 6, (bounds.Height - IconDiameter) / 2, IconDiameter, IconDiameter);
         using (var iconBrush = new SolidBrush(_accentColor))
         {
             g.FillEllipse(iconBrush, iconRect);
