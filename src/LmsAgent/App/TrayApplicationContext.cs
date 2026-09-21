@@ -400,6 +400,9 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         SettingsStore.Save(_settings);
         _scheduleOverlayService.ApplySettings();
+        // 업무 일지는 로그인 계정(담당업무) 기준으로 필터링하므로, 로그인 전에는 조회를
+        // 건너뛰고 비어 있는 채로 남아 있었다. 로그인 직후 반드시 한 번 다시 조회해야 한다.
+        _workJournalService.RefreshNow();
         _ = _licenseGuardService.CheckAsync();
 
         var today = DateTime.Today.ToString("yyyy-MM-dd");

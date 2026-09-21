@@ -370,6 +370,18 @@ src/LmsAgent/
 이지만 이 API가 응답에서 `done`(boolean)으로 변환해 내려주므로, 별도의 API 파일을 새로
 만들 필요 없이 이 엔드포인트를 그대로 씁니다.
 
+> ⚠ **과거 버그(수정됨)**: 업무 일지는 로그인 계정의 담당업무(`MyDeptIds`)를 기준으로
+> 걸러 보여주는데, 로그인 **전**(프로그램 시작 직후)에 한 번 조회를 시도한 뒤로는 로그인이
+> 끝나도 다시 조회하는 호출이 없었습니다. 그래서 로그인 직후에는 실시간 이벤트가 실제로
+> 발생하기 전까지 업무 일지가 계속 비어 있는 것처럼 보였습니다. 이제 로그인이 성공하면
+> `TrayApplicationContext.OnLoginClicked`에서 `WorkJournalService.RefreshNow()`를 바로
+> 호출해 갱신합니다.
+>
+> 또한 담당업무(`MyDeptIds`) 판정은 `teachers.php`(교사 레코드 필요)보다
+> **`ws_me.php`의 `dept_ids`**(모든 계정 유형을 커버하는 값, 웹소켓_데이터통신규칙.md
+> §7-A)를 우선 사용하도록 고쳤습니다 — `teacher_id`가 없는 관리자·행정실 계정도
+> 정확한 담당업무 판정을 받습니다(`SessionManager.RefreshDepartmentContextAsync`).
+
 ## 단축키 (전역 핫키)
 
 환경설정 &gt; 단축키에서 세 가지 창을 전역 단축키로 나타내거나 숨길 수 있습니다: 학사달력보기,

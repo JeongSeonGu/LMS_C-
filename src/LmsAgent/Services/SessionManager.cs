@@ -66,10 +66,25 @@ public sealed class SessionManager
             if (teacherResult.Ok && teacherResult.Data is not null)
             {
                 MyTeacher = teacherResult.Data;
-                MyDeptIds = MyTeacher.DeptIds.Count > 0
-                    ? new HashSet<int>(MyTeacher.DeptIds)
-                    : (Profile.DeptId.HasValue ? new HashSet<int> { Profile.DeptId.Value } : new HashSet<int>());
             }
+        }
+
+        // ws_me.php의 dept_ids가 "내 담당업무 전체"의 정확한 출처다(웹소켓_데이터통신규칙.md §7-A).
+        // teachers.php는 teacher_id가 있는 계정만 조회되므로, 행정실 등 교사가 아닌 계정은
+        // dept_id 하나뿐인 것으로 잘못 판단될 수 있다. dept_ids를 최우선으로 쓰고,
+        // 값이 없을 때만 teachers.php → 대표 dept_id 순으로 대체한다.
+        var meResult = await api.GetMeAsync().ConfigureAwait(false);
+        if (meResult.Ok && meResult.Data?.DeptIds is { Count: > 0 } deptIds)
+        {
+            MyDeptIds = new HashSet<int>(deptIds);
+        }
+        else if (MyTeacher?.DeptIds is { Count: > 0 } teacherDeptIds)
+        {
+            MyDeptIds = new HashSet<int>(teacherDeptIds);
+        }
+        else if (Profile.DeptId.HasValue)
+        {
+            MyDeptIds = new HashSet<int> { Profile.DeptId.Value };
         }
 
         SessionChanged?.Invoke();

@@ -655,4 +655,8 @@ public sealed class MeResult
 {
     [JsonPropertyName("user")] public WorkSupportUser? User { get; set; }
     [JsonPropertyName("expires_in")] public int ExpiresIn { get; set; }
+
+    /// <summary>내 담당업무 id 전체(N:M). user.dept_id는 대표 업무 1개뿐이라 "내 업무" 판정에는
+    /// 이 값을 써야 한다(웹소켓_데이터통신규칙.md §7-A). 교사가 아닌 계정(행정실 등)도 커버된다.</summary>
+    [JsonPropertyName("dept_ids")] public List<int> DeptIds { get; set; } = new();
 }
