@@ -97,7 +97,11 @@ public sealed class WorkJournalService : IDisposable
 
             foreach (var (year, month) in months)
             {
-                var result = await _api.GetEventsAsync(year, month).ConfigureAwait(false);
+                // ⚠ 반드시 true여야 한다 — 아래 _form.SetItems(items)가 WinForms 컨트롤을 직접
+                // 조작하므로, await 이후 UI 스레드로 반드시 되돌아와야 한다(ConfigureAwait(false)로
+                // 두면 스레드풀 스레드에서 컨트롤을 건드리게 되어 예외가 조용히 삼켜지고 화면이
+                // 갱신되지 않는다 — 데이터는 정상인데 업무 일지에 아무것도 안 나타나던 원인).
+                var result = await _api.GetEventsAsync(year, month).ConfigureAwait(true);
                 if (!result.Ok || result.Data is null)
                 {
                     continue;
@@ -126,7 +130,7 @@ public sealed class WorkJournalService : IDisposable
                 }
             }
 
-            var todoResult = await _api.GetTodosAsync().ConfigureAwait(false);
+            var todoResult = await _api.GetTodosAsync().ConfigureAwait(true);
             if (todoResult.Ok && todoResult.Data is not null)
             {
                 foreach (var todo in todoResult.Data)

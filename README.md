@@ -381,6 +381,17 @@ src/LmsAgent/
 > **`ws_me.php`의 `dept_ids`**(모든 계정 유형을 커버하는 값, 웹소켓_데이터통신규칙.md
 > §7-A)를 우선 사용하도록 고쳤습니다 — `teacher_id`가 없는 관리자·행정실 계정도
 > 정확한 담당업무 판정을 받습니다(`SessionManager.RefreshDepartmentContextAsync`).
+>
+> **세 번째 원인(진짜 근본 원인)**: 위 두 가지를 고친 뒤에도 데이터는 정확히 계산되는데
+> (디버거로 `items.Count`가 맞게 나옴) 화면에는 아무것도 안 나타나는 문제가 남아 있었습니다.
+> `WorkJournalService.RefreshAsync()`가 API 호출에 `.ConfigureAwait(false)`를 쓰고 있어서,
+> `await` 이후의 코드 — 최종적으로 WinForms 컨트롤을 직접 조작하는
+> `_form.SetItems(items)` — 가 **UI 스레드가 아닌 스레드풀 스레드**에서 실행되고 있었습니다.
+> WinForms 컨트롤은 자신을 만든 스레드에서만 조작해야 하므로, 이 호출은 예외를 던지지만
+> `_ = RefreshAsync();`(discard) 형태로 호출되어 그 예외가 조용히 무시되어 화면 갱신만
+> 실패했습니다. 두 `ConfigureAwait(false)`를 `ConfigureAwait(true)`로 바꿔 UI 스레드로
+> 정상적으로 돌아오도록 수정했습니다(같은 이유로 `ScheduleOverlayService`는 처음부터
+> `ConfigureAwait(true)`를 쓰고 있어서 문제가 없었습니다).
 
 ## 단축키 (전역 핫키)
 
