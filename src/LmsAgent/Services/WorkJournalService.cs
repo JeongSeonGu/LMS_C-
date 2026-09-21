@@ -20,6 +20,7 @@ public sealed class WorkJournalService : IDisposable
     private readonly SessionManager _session;
     private readonly AppSettings _settings;
     private readonly Timer _timer;
+    private readonly StickyNoteService _stickyNotes = new();
     private WorkJournalForm? _form;
 
     public WorkJournalService(WorkSupportApiClient api, SessionManager session, AppSettings settings)
@@ -31,17 +32,26 @@ public sealed class WorkJournalService : IDisposable
         _timer.Tick += async (_, _) => await RefreshAsync();
     }
 
-    /// <summary>환경설정이 바뀔 때마다(또는 로그인 직후) 호출해서 오버레이 상태를 다시 맞춥니다.</summary>
+    /// <summary>환경설정이 바뀔 때마다(또는 로그인 직후) 호출해서 오버레이 상태를 다시 맞춥니다.
+    /// 사용자가 만든 스티커 메모(<see cref="StickyNoteService"/>)도 이 기능의 켜짐/꺼짐을
+    /// 그대로 따릅니다 — 업무 일지를 끄면 메모 창도 함께 닫히고(내용은 보존), 다시 켜면
+    /// 함께 돌아옵니다.</summary>
     public void ApplySettings()
     {
         if (!_settings.TaskJournalEnabled)
         {
             _timer.Stop();
             _form?.Hide();
+            _stickyNotes.HideAll();
             return;
         }
 
-        _form ??= new WorkJournalForm();
+        if (_form is null)
+        {
+            _form = new WorkJournalForm();
+            _form.MemoButtonClicked += (_, _) => _stickyNotes.ShowAll();
+        }
+
         _form.PositionTopLeft(DisplayHelper.ResolveScreen(_settings.TaskJournalMonitorIndex));
         _form.SetOpacityPercent(_settings.TaskJournalOpacityPercent);
 
@@ -248,5 +258,6 @@ public sealed class WorkJournalService : IDisposable
     {
         _timer.Dispose();
         _form?.Dispose();
+        _stickyNotes.Dispose();
     }
 }

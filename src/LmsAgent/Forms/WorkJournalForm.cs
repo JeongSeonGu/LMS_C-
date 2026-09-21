@@ -65,9 +65,6 @@ public sealed class WorkJournalForm : Form
     // "항상 위(Move To Top)"을 강제로 유지하기 위해 주기적으로 Z-order를 다시 맨 위로 올린다
     // (다른 프로그램의 topmost 창에 가려지는 경우를 방지). 구현 방식은 아래 생성자 참고.
     private readonly Timer _topMostTimer = new() { Interval = 3000 };
-    private readonly Timer _memoSaveTimer = new() { Interval = 800 };
-
-    private bool _memoMode;
 
     private readonly Panel _header = new()
     {
@@ -85,6 +82,11 @@ public sealed class WorkJournalForm : Form
         Font = UiTheme.BoldFont,
         ForeColor = Color.FromArgb(90, 60, 10),
     };
+
+    /// <summary>업무 일지 위에 겹쳐 그려지는 것이 아니라, 클릭하면 완전히 별도의 스티커 메모
+    /// 창(들)이 뜬다(<see cref="StickyNoteForm"/>). 이 폼은 그 창을 직접 만들지 않고, 이
+    /// 이벤트를 구독한 쪽(WorkJournalService)이 StickyNoteService로 열어 준다.</summary>
+    public event EventHandler? MemoButtonClicked;
 
     private readonly Button _memoButton = new()
     {
@@ -114,27 +116,6 @@ public sealed class WorkJournalForm : Form
         Padding = new Padding(8, 6, 8, 8),
     };
 
-    // 쪽지(스티커 메모) 모드 — 헤더의 🗒 버튼을 누르면 목록 대신 이 자유 메모 화면으로 바뀐다.
-    // 서버와 주고받지 않는 개인용 메모라 로컬 파일에만 저장한다(WorkNoteStore).
-    private readonly Panel _memoPanel = new()
-    {
-        Dock = DockStyle.Fill,
-        BackColor = NoteColor,
-        Padding = new Padding(8, 6, 8, 8),
-        Visible = false,
-    };
-
-    private readonly TextBox _memoBox = new()
-    {
-        Dock = DockStyle.Fill,
-        Multiline = true,
-        ScrollBars = ScrollBars.Vertical,
-        BorderStyle = BorderStyle.None,
-        BackColor = NoteColor,
-        ForeColor = Color.FromArgb(60, 45, 10),
-        Font = new Font("맑은 고딕", 10F),
-    };
-
     public WorkJournalForm()
     {
         FormBorderStyle = FormBorderStyle.None;
@@ -149,7 +130,7 @@ public sealed class WorkJournalForm : Form
         _closeButton.Click += (_, _) => Hide();
 
         _memoButton.FlatAppearance.BorderSize = 0;
-        _memoButton.Click += (_, _) => ToggleMemoMode();
+        _memoButton.Click += (_, _) => MemoButtonClicked?.Invoke(this, EventArgs.Empty);
 
         // 헤더 순서: 닫기(×) 버튼을 먼저 추가해 항상 맨 오른쪽 끝에 고정하고,
         // 쪽지(🗒) 버튼을 그 다음에 추가해 닫기 버튼 바로 왼쪽(타이틀 근처)에 놓는다.
@@ -157,21 +138,7 @@ public sealed class WorkJournalForm : Form
         _header.Controls.Add(_closeButton);
         _header.Controls.Add(_memoButton);
 
-        _memoPanel.Controls.Add(_memoBox);
-        _memoBox.Text = WorkNoteStore.Load();
-        _memoBox.TextChanged += (_, _) =>
-        {
-            _memoSaveTimer.Stop();
-            _memoSaveTimer.Start();
-        };
-        _memoSaveTimer.Tick += (_, _) =>
-        {
-            _memoSaveTimer.Stop();
-            WorkNoteStore.Save(_memoBox.Text);
-        };
-
         Controls.Add(_content);
-        Controls.Add(_memoPanel);
         Controls.Add(_header);
 
         // ⚠ Form.TopMost를 껐다 켜는 방식(TopMost = false; TopMost = true;)은
@@ -214,27 +181,6 @@ public sealed class WorkJournalForm : Form
     public void SetOpacityPercent(int percent)
     {
         Opacity = Math.Clamp(percent, 20, 100) / 100.0;
-    }
-
-    /// <summary>🗒 버튼으로 목록/쪽지 화면을 전환합니다. 쪽지 내용은 로컬에만 저장됩니다.</summary>
-    private void ToggleMemoMode()
-    {
-        _memoMode = !_memoMode;
-        _content.Visible = !_memoMode;
-        _memoPanel.Visible = _memoMode;
-        _memoButton.ForeColor = _memoMode ? UiTheme.OrangeDark : Color.FromArgb(90, 60, 10);
-
-        if (_memoMode)
-        {
-            _memoBox.Focus();
-            _memoBox.SelectionStart = _memoBox.Text.Length;
-        }
-        else if (_memoSaveTimer.Enabled)
-        {
-            // 화면을 바로 닫아도 마지막 입력이 사라지지 않도록 즉시 저장한다.
-            _memoSaveTimer.Stop();
-            WorkNoteStore.Save(_memoBox.Text);
-        }
     }
 
     /// <param name="alerts">요청사항·알림·법정연수 등 학사 달력 밖의 "확인 필요" 항목(분류별로 묶어 상단에 표시).</param>
@@ -411,13 +357,7 @@ public sealed class WorkJournalForm : Form
     {
         if (disposing)
         {
-            if (_memoSaveTimer.Enabled)
-            {
-                WorkNoteStore.Save(_memoBox.Text);
-            }
-
             _topMostTimer.Dispose();
-            _memoSaveTimer.Dispose();
         }
 
         base.Dispose(disposing);
