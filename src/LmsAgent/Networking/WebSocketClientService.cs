@@ -20,7 +20,9 @@ namespace LmsAgent.Networking;
 /// </summary>
 public sealed class WebSocketClientService : IAsyncDisposable
 {
-    private static readonly string[] Modules = { "calendar", "notice" };
+    // request/training은 학사달력외_연동가이드.md의 요청사항·법정연수 실시간 갱신에 쓰인다
+    // (전체 공개 글/전체 대상 과정을 받으려면 구독이 필요 — 지정 대상 글은 구독과 무관하게 온다).
+    private static readonly string[] Modules = { "calendar", "notice", "request", "training" };
 
     private readonly WorkSupportApiClient _api;
     private readonly AppSettings _settings;

@@ -11,7 +11,8 @@ namespace LmsAgent.Services;
 /// <summary>
 /// 환경설정 &gt; 업무의 "업무 및 할일 모니터 출력"이 켜져 있으면 업무 일지(포스트잇 오버레이)를
 /// 선택한 모니터에 상시 표시합니다. 내 담당업무 관련 학사일정, 내가 해야 할 할일(미완료),
-/// 나에게 알림 대상으로 지정된 일정을 날짜별로 모아 보여줍니다.
+/// 나에게 알림 대상으로 지정된 일정을 날짜별로 모아 보여주고, 그 위에 학사 달력 밖의
+/// 요청사항·알림·법정연수 "진행 중" 항목도 분류별로 함께 정리해 보여줍니다.
 /// </summary>
 public sealed class WorkJournalService : IDisposable
 {
@@ -97,7 +98,7 @@ public sealed class WorkJournalService : IDisposable
 
             foreach (var (year, month) in months)
             {
-                // ⚠ 반드시 true여야 한다 — 아래 _form.SetItems(items)가 WinForms 컨트롤을 직접
+                // ⚠ 반드시 true여야 한다 — 아래 _form.SetContent(...)가 WinForms 컨트롤을 직접
                 // 조작하므로, await 이후 UI 스레드로 반드시 되돌아와야 한다(ConfigureAwait(false)로
                 // 두면 스레드풀 스레드에서 컨트롤을 건드리게 되어 예외가 조용히 삼켜지고 화면이
                 // 갱신되지 않는다 — 데이터는 정상인데 업무 일지에 아무것도 안 나타나던 원인).
@@ -157,7 +158,76 @@ public sealed class WorkJournalService : IDisposable
             return;
         }
 
-        _form.SetItems(items);
+        var alerts = await BuildAlertsAsync().ConfigureAwait(true);
+        _form.SetContent(alerts, items);
+    }
+
+    /// <summary>
+    /// 학사 달력 밖의 요약 항목(요청사항 · 알림 · 법정연수)을 모읍니다(학사달력외_연동가이드.md).
+    /// 세 소스를 각각 독립적으로 시도하므로, 한 쪽이 실패해도 나머지는 그대로 반영됩니다.
+    /// </summary>
+    private async Task<List<WorkJournalAlert>> BuildAlertsAsync()
+    {
+        var alerts = new List<WorkJournalAlert>();
+
+        try
+        {
+            var result = await _api.GetActiveRequestsAsync().ConfigureAwait(true);
+            if (result.Ok && result.Data is not null)
+            {
+                foreach (var req in result.Data.Items)
+                {
+                    var badge = req.IsOverdue ? "기한초과" : (req.Priority == "high" ? "긴급" : null);
+                    var due = DateTime.TryParse(req.DueDate, out var dueDate) ? $" (~{dueDate:M/d})" : "";
+                    alerts.Add(new WorkJournalAlert("요청사항", req.Title + due, req.Link, badge));
+                }
+            }
+        }
+        catch
+        {
+            // 이 소스만 조용히 건너뛴다.
+        }
+
+        try
+        {
+            var result = await _api.GetUnreadNoticesAsync().ConfigureAwait(true);
+            if (result.Ok && result.Data is not null)
+            {
+                foreach (var notice in result.Data.Items)
+                {
+                    alerts.Add(new WorkJournalAlert("알림", notice.Title, notice.Link));
+                }
+            }
+        }
+        catch
+        {
+            // 이 소스만 조용히 건너뛴다.
+        }
+
+        try
+        {
+            var result = await _api.GetActiveTrainingAsync().ConfigureAwait(true);
+            if (result.Ok && result.Data is not null)
+            {
+                foreach (var todo in result.Data.Todo)
+                {
+                    var badge = todo.Status == "rejected" ? "보완요청" : (todo.IsOverdue ? "기한초과" : null);
+                    alerts.Add(new WorkJournalAlert("법정연수", todo.Title, todo.Link, badge));
+                }
+
+                foreach (var review in result.Data.Review)
+                {
+                    alerts.Add(new WorkJournalAlert(
+                        "법정연수", $"{review.Title} (확인대기 {review.PendingCount}건)", review.Link));
+                }
+            }
+        }
+        catch
+        {
+            // 이 소스만 조용히 건너뛴다.
+        }
+
+        return alerts;
     }
 
     private (DateTime Start, DateTime End) ResolveRange()

@@ -321,9 +321,17 @@ public sealed class TrayApplicationContext : ApplicationContext
     /// </summary>
     private void OnRealtimeScopeChanged(string scope, string type)
     {
+        // request(요청사항) · training(법정연수) · notice(알림)는 업무 일지의 "확인 필요" 요약에만
+        // 반영되면 되므로, 학사달력 오버레이/복무 배너는 건드리지 않고 업무 일지만 다시 조회한다
+        // (학사달력외_연동가이드.md — 세 기능 모두 진행 중인 것만 다시 읽는 전용 API를 쓴다).
+        if (scope is "request" or "training" or "notice")
+        {
+            RunOnUiThread(() => _workJournalService.RefreshNow());
+            return;
+        }
+
         if (scope != "calendar")
         {
-            // 현재 구독 중인 모듈은 calendar/notice뿐이며, notice는 별도 처리 화면이 없다.
             return;
         }
 

@@ -392,6 +392,17 @@ public sealed class WorkSupportApiClient : IDisposable
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// 진행 중인(요청/처리 중) 요청사항 전용 목록. 학사달력외_연동가이드.md §4-1 — 완료·종료·삭제·
+    /// 내가 처리완료 표시한 지정 대상 글은 서버가 이미 걸러 준다. 업무 일지 요약에 사용한다.
+    /// ⚠ action=detail과 달리 이 호출은 "읽음" 처리를 하지 않으므로 동기화용으로 안전하다.
+    /// </summary>
+    public async Task<ApiEnvelope<ActiveRequestsResult>> GetActiveRequestsAsync()
+    {
+        return await GetJsonAsync<ActiveRequestsResult>("php/features/requests.php?action=active")
+            .ConfigureAwait(false);
+    }
+
     /// <summary>대상은 항상 "전체 공개"로 등록합니다(개별 수신자 지정 UI는 제공하지 않습니다).</summary>
     public async Task<ApiEnvelope<object>> SaveRequestAsync(
         int id, string title, string body, string category, string priority, string status, string? dueDate)
@@ -457,6 +468,26 @@ public sealed class WorkSupportApiClient : IDisposable
     public async Task<ApiEnvelope<TrainingMyResult>> GetMyTrainingAsync()
     {
         return await GetJsonAsync<TrainingMyResult>("php/features/training.php?action=my").ConfigureAwait(false);
+    }
+
+    /* =========================================================
+     * 업무 일지 요약용 — 요청사항 · 알림 · 법정연수 "진행 중" 목록
+     * (학사달력외_연동가이드.md — 학사 달력과 달리 폼 전송·message 키를 쓰지만,
+     *  아래는 전부 조회(GET)라 인증된 세션 쿠키만 실어 보내면 되고 본문 형식은 무관하다)
+     * ========================================================= */
+
+    /// <summary>내가 낼 이수증(미제출·보완요청)과 내가 확인할 제출(확인대기) 목록.</summary>
+    public async Task<ApiEnvelope<ActiveTrainingResult>> GetActiveTrainingAsync()
+    {
+        return await GetJsonAsync<ActiveTrainingResult>("php/features/training.php?action=active")
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>읽지 않은 알림 목록. 조회만으로는 읽음 처리되지 않는다.</summary>
+    public async Task<ApiEnvelope<UnreadNoticesResult>> GetUnreadNoticesAsync(int limit = 100)
+    {
+        return await GetJsonAsync<UnreadNoticesResult>(
+            $"php/features/notifications.php?action=list&only_unread=1&limit={limit}").ConfigureAwait(false);
     }
 
     /* =========================================================

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -32,14 +33,41 @@ public sealed class WorkJournalItem
     public TimeSpan? Time { get; }
 }
 
+/// <summary>
+/// 학사 달력 밖의 요약 항목(요청사항 · 알림 · 법정연수). 날짜별 목록과 달리 날짜가 아니라
+/// 분류별로 묶어서 보여주며, 클릭하면 웹 페이지(link)를 엽니다(학사달력외_연동가이드.md).
+/// </summary>
+public sealed class WorkJournalAlert
+{
+    /// <param name="category">"요청사항" · "알림" · "법정연수".</param>
+    /// <param name="link">서버 기준 상대 경로. 클릭 시 앞에 호스트를 붙여 브라우저로 엽니다.</param>
+    /// <param name="badge">"긴급" · "보완요청" · "확인대기" 같은 짧은 상태 배지. 없으면 null.</param>
+    public WorkJournalAlert(string category, string title, string? link, string? badge = null)
+    {
+        Category = category;
+        Title = title;
+        Link = link;
+        Badge = badge;
+    }
+
+    public string Category { get; }
+    public string Title { get; }
+    public string? Link { get; }
+    public string? Badge { get; }
+}
+
 public sealed class WorkJournalForm : Form
 {
     private static readonly Color NoteColor = Color.FromArgb(255, 247, 168);
+    private static readonly Color ExpandableColor = Color.FromArgb(196, 92, 16); // 눈에 띄는 주황 — 클릭하면 펼쳐지는 항목 전용
     private static readonly CultureInfo Korean = new("ko-KR");
 
     // "항상 위(Move To Top)"을 강제로 유지하기 위해 주기적으로 Z-order를 다시 맨 위로 올린다
     // (다른 프로그램의 topmost 창에 가려지는 경우를 방지). 구현 방식은 아래 생성자 참고.
     private readonly Timer _topMostTimer = new() { Interval = 3000 };
+    private readonly Timer _memoSaveTimer = new() { Interval = 800 };
+
+    private bool _memoMode;
 
     private readonly Panel _header = new()
     {
@@ -55,6 +83,15 @@ public sealed class WorkJournalForm : Form
         TextAlign = ContentAlignment.MiddleLeft,
         Padding = new Padding(8, 0, 0, 0),
         Font = UiTheme.BoldFont,
+        ForeColor = Color.FromArgb(90, 60, 10),
+    };
+
+    private readonly Button _memoButton = new()
+    {
+        Dock = DockStyle.Right,
+        Width = 28,
+        Text = "🗒",
+        FlatStyle = FlatStyle.Flat,
         ForeColor = Color.FromArgb(90, 60, 10),
     };
 
@@ -77,6 +114,27 @@ public sealed class WorkJournalForm : Form
         Padding = new Padding(8, 6, 8, 8),
     };
 
+    // 쪽지(스티커 메모) 모드 — 헤더의 🗒 버튼을 누르면 목록 대신 이 자유 메모 화면으로 바뀐다.
+    // 서버와 주고받지 않는 개인용 메모라 로컬 파일에만 저장한다(WorkNoteStore).
+    private readonly Panel _memoPanel = new()
+    {
+        Dock = DockStyle.Fill,
+        BackColor = NoteColor,
+        Padding = new Padding(8, 6, 8, 8),
+        Visible = false,
+    };
+
+    private readonly TextBox _memoBox = new()
+    {
+        Dock = DockStyle.Fill,
+        Multiline = true,
+        ScrollBars = ScrollBars.Vertical,
+        BorderStyle = BorderStyle.None,
+        BackColor = NoteColor,
+        ForeColor = Color.FromArgb(60, 45, 10),
+        Font = new Font("맑은 고딕", 10F),
+    };
+
     public WorkJournalForm()
     {
         FormBorderStyle = FormBorderStyle.None;
@@ -90,10 +148,30 @@ public sealed class WorkJournalForm : Form
         _closeButton.FlatAppearance.BorderSize = 0;
         _closeButton.Click += (_, _) => Hide();
 
+        _memoButton.FlatAppearance.BorderSize = 0;
+        _memoButton.Click += (_, _) => ToggleMemoMode();
+
+        // 헤더 순서: 닫기(×) 버튼을 먼저 추가해 항상 맨 오른쪽 끝에 고정하고,
+        // 쪽지(🗒) 버튼을 그 다음에 추가해 닫기 버튼 바로 왼쪽(타이틀 근처)에 놓는다.
         _header.Controls.Add(_titleLabel);
         _header.Controls.Add(_closeButton);
+        _header.Controls.Add(_memoButton);
+
+        _memoPanel.Controls.Add(_memoBox);
+        _memoBox.Text = WorkNoteStore.Load();
+        _memoBox.TextChanged += (_, _) =>
+        {
+            _memoSaveTimer.Stop();
+            _memoSaveTimer.Start();
+        };
+        _memoSaveTimer.Tick += (_, _) =>
+        {
+            _memoSaveTimer.Stop();
+            WorkNoteStore.Save(_memoBox.Text);
+        };
 
         Controls.Add(_content);
+        Controls.Add(_memoPanel);
         Controls.Add(_header);
 
         // ⚠ Form.TopMost를 껐다 켜는 방식(TopMost = false; TopMost = true;)은
@@ -138,20 +216,64 @@ public sealed class WorkJournalForm : Form
         Opacity = Math.Clamp(percent, 20, 100) / 100.0;
     }
 
-    public void SetItems(IReadOnlyList<WorkJournalItem> items)
+    /// <summary>🗒 버튼으로 목록/쪽지 화면을 전환합니다. 쪽지 내용은 로컬에만 저장됩니다.</summary>
+    private void ToggleMemoMode()
+    {
+        _memoMode = !_memoMode;
+        _content.Visible = !_memoMode;
+        _memoPanel.Visible = _memoMode;
+        _memoButton.ForeColor = _memoMode ? UiTheme.OrangeDark : Color.FromArgb(90, 60, 10);
+
+        if (_memoMode)
+        {
+            _memoBox.Focus();
+            _memoBox.SelectionStart = _memoBox.Text.Length;
+        }
+        else if (_memoSaveTimer.Enabled)
+        {
+            // 화면을 바로 닫아도 마지막 입력이 사라지지 않도록 즉시 저장한다.
+            _memoSaveTimer.Stop();
+            WorkNoteStore.Save(_memoBox.Text);
+        }
+    }
+
+    /// <param name="alerts">요청사항·알림·법정연수 등 학사 달력 밖의 "확인 필요" 항목(분류별로 묶어 상단에 표시).</param>
+    /// <param name="items">학사일정·할일 등 날짜별 항목(기존 방식대로 날짜별로 묶어 표시).</param>
+    public void SetContent(IReadOnlyList<WorkJournalAlert> alerts, IReadOnlyList<WorkJournalItem> items)
     {
         _content.SuspendLayout();
         _content.Controls.Clear();
 
+        if (alerts.Count > 0)
+        {
+            foreach (var group in alerts.GroupBy(a => a.Category))
+            {
+                _content.Controls.Add(BuildAlertCategoryHeader(group.Key, group.Count()));
+                foreach (var alert in group)
+                {
+                    _content.Controls.Add(BuildAlertRow(alert));
+                }
+            }
+
+            _content.Controls.Add(new Panel
+            {
+                Width = 268, Height = 1, BackColor = Color.FromArgb(224, 196, 120),
+                Margin = new Padding(0, 8, 0, 4),
+            });
+        }
+
         if (items.Count == 0)
         {
-            _content.Controls.Add(new Label
+            if (alerts.Count == 0)
             {
-                AutoSize = true,
-                Text = "표시할 항목이 없습니다.",
-                ForeColor = Color.FromArgb(120, 95, 40),
-                Margin = new Padding(4, 8, 0, 0),
-            });
+                _content.Controls.Add(new Label
+                {
+                    AutoSize = true,
+                    Text = "표시할 항목이 없습니다.",
+                    ForeColor = Color.FromArgb(120, 95, 40),
+                    Margin = new Padding(4, 8, 0, 0),
+                });
+            }
         }
         else
         {
@@ -177,6 +299,66 @@ public sealed class WorkJournalForm : Form
         _content.ResumeLayout();
     }
 
+    private static Control BuildAlertCategoryHeader(string category, int count)
+    {
+        var (icon, color) = category switch
+        {
+            "요청사항" => ("📮", UiTheme.OrangeDark),
+            "알림" => ("🔔", UiTheme.Danger),
+            "법정연수" => ("🎓", UiTheme.SkyDark),
+            _ => ("•", Color.FromArgb(150, 90, 10)),
+        };
+
+        return new Label
+        {
+            AutoSize = true,
+            Text = $"{icon} {category} ({count})",
+            Font = UiTheme.BoldFont,
+            ForeColor = color,
+            Margin = new Padding(0, 6, 0, 2),
+        };
+    }
+
+    private static Control BuildAlertRow(WorkJournalAlert alert)
+    {
+        var row = new Panel { Width = 268, AutoSize = true, Margin = new Padding(4, 0, 0, 2) };
+        var badge = string.IsNullOrWhiteSpace(alert.Badge) ? "" : $"[{alert.Badge}] ";
+        var hasLink = !string.IsNullOrWhiteSpace(alert.Link);
+
+        var label = new Label
+        {
+            AutoSize = true,
+            MaximumSize = new Size(260, 0),
+            Text = (hasLink ? "▶ " : "• ") + badge + alert.Title,
+            ForeColor = hasLink ? ExpandableColor : Color.FromArgb(60, 45, 10),
+            Cursor = hasLink ? Cursors.Hand : Cursors.Default,
+        };
+
+        if (hasLink)
+        {
+            label.Click += (_, _) => OpenLink(alert.Link!);
+        }
+
+        row.Controls.Add(label);
+        row.Height = label.PreferredHeight;
+        return row;
+    }
+
+    private static void OpenLink(string relativeLink)
+    {
+        try
+        {
+            var url = relativeLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? relativeLink
+                : "https://future-class.kr" + relativeLink;
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 브라우저를 열지 못해도 업무 일지 자체는 계속 동작해야 한다.
+        }
+    }
+
     private static Control BuildItemRow(WorkJournalItem item)
     {
         var hasDescription = item.Description is not null;
@@ -185,12 +367,15 @@ public sealed class WorkJournalForm : Form
 
         var timePrefix = item.Time is { } t ? t.ToString(@"hh\:mm") + "  " : "";
 
+        // 클릭하면 설명이 펼쳐지는 항목은 화살표(▶/▼)로 눈에 띄게 표시하고, 색도 다르게 준다.
+        // 설명이 없는 항목은 기존처럼 수수한 점(•)만 붙는다.
         var titleLabel = new Label
         {
             AutoSize = true,
             MaximumSize = new Size(260, 0),
-            Text = timePrefix + (hasDescription ? "📝 " : "• ") + item.Title,
-            ForeColor = Color.FromArgb(60, 45, 10),
+            Text = timePrefix + (hasDescription ? "▶ " : "• ") + item.Title,
+            ForeColor = hasDescription ? ExpandableColor : Color.FromArgb(60, 45, 10),
+            Font = hasDescription ? UiTheme.BoldFont : UiTheme.BaseFont,
             Cursor = hasDescription ? Cursors.Hand : Cursors.Default,
         };
 
@@ -214,10 +399,27 @@ public sealed class WorkJournalForm : Form
             titleLabel.Click += (_, _) =>
             {
                 descLabel.Visible = !descLabel.Visible;
+                titleLabel.Text = timePrefix + (descLabel.Visible ? "▼ " : "▶ ") + item.Title;
                 row.Height = titleLabel.PreferredHeight + (descLabel.Visible ? descLabel.PreferredHeight + 4 : 0);
             };
         }
 
         return row;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            if (_memoSaveTimer.Enabled)
+            {
+                WorkNoteStore.Save(_memoBox.Text);
+            }
+
+            _topMostTimer.Dispose();
+            _memoSaveTimer.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }
