@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Forms;
+using LmsAgent.Models.Realtime;
 using LmsAgent.Networking;
 using LmsAgent.Services;
 
@@ -29,6 +30,7 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly BreakBoardService _breakBoardService;
     private readonly ScheduleReminderService _scheduleReminderService;
     private readonly WorkJournalService _workJournalService;
+    private readonly MyDutyChangeService _myDutyChangeService;
     private readonly GlobalHotkeyService _hotkeyService = new();
     private readonly NotifyIcon _trayIcon;
 
@@ -62,6 +64,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _wsClient = new WebSocketClientService(_api, _settings);
         _wsClient.StateChanged += OnConnectionStateChanged;
         _wsClient.ScopeChanged += OnRealtimeScopeChanged;
+        _wsClient.DomainEventReceived += OnDomainEventReceived;
         _wsClient.LogMessage += RealtimeLog.Write;
 
         _dutyService = new DutyNotificationService(_api, _settings);
@@ -71,11 +74,13 @@ public sealed class TrayApplicationContext : ApplicationContext
         _breakBoardService = new BreakBoardService(_settings);
         _scheduleReminderService = new ScheduleReminderService(_api, _session, _settings);
         _workJournalService = new WorkJournalService(_api, _session, _settings);
+        _myDutyChangeService = new MyDutyChangeService(_api, _session);
 
         _session.SessionChanged += OnSessionChanged;
         _session.ScheduleChanged += OnScheduleChanged;
         _licenseGuardService.StatusChanged += OnLicenseStatusChanged;
         _scheduleReminderService.ReminderRaised += OnScheduleReminderRaised;
+        _myDutyChangeService.Notify += OnMyDutyChangeNotify;
 
         var menu = new ContextMenuStrip { Renderer = UiTheme.CreateMenuRenderer(), Font = UiTheme.BaseFont };
         menu.Renderer.RenderItemText += (_, e) =>
@@ -338,6 +343,21 @@ public sealed class TrayApplicationContext : ApplicationContext
             // 할일/알림 대상 일정도 업무 일지에 반영되므로 항상 함께 갱신한다.
             _workJournalService.RefreshNow();
         });
+    }
+
+    /// <summary>
+    /// domain.event 원본을 그대로 받아, 학사 일정의 담당업무(deptId)가 바뀌어 "내 업무"가
+    /// 되었거나 빠졌는지 판단합니다(웹소켓_데이터통신규칙.md §7-A). 배경화면 오버레이·업무 일지
+    /// 갱신 자체는 위 OnRealtimeScopeChanged에서 이미 이루어지므로, 여기서는 트레이 알림만 만듭니다.
+    /// </summary>
+    private void OnDomainEventReceived(DomainEventData ev)
+    {
+        RunOnUiThread(() => _myDutyChangeService.HandleDomainEvent(ev));
+    }
+
+    private void OnMyDutyChangeNotify(string message)
+    {
+        RunOnUiThread(() => _trayIcon.ShowBalloonTip(6000, "담당업무 변경 알림", message, ToolTipIcon.Info));
     }
 
     private void OnWorkSupportPageClicked(object? sender, EventArgs e)

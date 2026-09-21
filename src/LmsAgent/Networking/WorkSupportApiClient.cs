@@ -179,6 +179,14 @@ public sealed class WorkSupportApiClient : IDisposable
             $"SchoolCalendar/php/api/events.php?action=list&year={year}&month={month}").ConfigureAwait(false);
     }
 
+    /// <summary>일정 단건 조회. 웹소켓_데이터통신규칙.md §7-A(담당업무 변경 감지)에서
+    /// 알림 문구를 만들기 위해 제목·날짜를 다시 읽을 때 사용합니다.</summary>
+    public async Task<ApiEnvelope<SchoolEvent>> GetEventAsync(int id)
+    {
+        return await GetJsonAsync<SchoolEvent>(
+            $"SchoolCalendar/php/api/events.php?action=get&id={id}").ConfigureAwait(false);
+    }
+
     public async Task<ApiEnvelope<EventWriteResult>> AddEventAsync(SchoolEvent ev)
     {
         var request = ToWriteRequest("add", ev);

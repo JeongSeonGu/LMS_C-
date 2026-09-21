@@ -39,6 +39,11 @@ public sealed class WebSocketClientService : IAsyncDisposable
     /// <summary>서버가 "이 scope의 데이터가 바뀌었다"고 알려올 때 발생합니다. UI 스레드로 마샬링해서 쓰세요.</summary>
     public event Action<string, string>? ScopeChanged; // (scope, type)
 
+    /// <summary>ScopeChanged와 함께(같은 조건으로) 발생하며, hint·actor·resource 등 원본 이벤트 전체를
+    /// 그대로 넘깁니다. 담당업무 변경 감지(웹소켓_데이터통신규칙.md §7-A)처럼 scope/type만으로는
+    /// 부족한 판단이 필요할 때 씁니다. 백그라운드 스레드에서 발생하므로 UI 스레드로 마샬링해서 쓰세요.</summary>
+    public event Action<DomainEventData>? DomainEventReceived;
+
     public event Action<string>? LogMessage;
 
     public ConnectionState State { get; private set; } = ConnectionState.Disconnected;
@@ -255,6 +260,7 @@ public sealed class WebSocketClientService : IAsyncDisposable
                 if (ev is not null && ShouldHandle(ev))
                 {
                     ScopeChanged?.Invoke(ev.Scope, ev.Type);
+                    DomainEventReceived?.Invoke(ev);
                 }
                 break;
 
