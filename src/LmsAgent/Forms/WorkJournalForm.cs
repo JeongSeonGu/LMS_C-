@@ -17,16 +17,19 @@ namespace LmsAgent.Forms;
 /// </summary>
 public sealed class WorkJournalItem
 {
-    public WorkJournalItem(DateTime date, string title, string? description)
+    /// <param name="time">일정의 시작 시각. 종일 일정·할일처럼 특정 시각이 없으면 null(맨 위에 먼저 표시).</param>
+    public WorkJournalItem(DateTime date, string title, string? description, TimeSpan? time = null)
     {
         Date = date;
         Title = title;
         Description = string.IsNullOrWhiteSpace(description) ? null : description;
+        Time = time;
     }
 
     public DateTime Date { get; }
     public string Title { get; }
     public string? Description { get; }
+    public TimeSpan? Time { get; }
 }
 
 public sealed class WorkJournalForm : Form
@@ -34,8 +37,8 @@ public sealed class WorkJournalForm : Form
     private static readonly Color NoteColor = Color.FromArgb(255, 247, 168);
     private static readonly CultureInfo Korean = new("ko-KR");
 
-    // "항상 위(Move To Top)"을 강제로 유지하기 위해 주기적으로 TopMost를 껐다 켠다.
-    // (다른 프로그램의 topmost 창에 가려지는 경우를 방지)
+    // "항상 위(Move To Top)"을 강제로 유지하기 위해 주기적으로 Z-order를 다시 맨 위로 올린다
+    // (다른 프로그램의 topmost 창에 가려지는 경우를 방지). 구현 방식은 아래 생성자 참고.
     private readonly Timer _topMostTimer = new() { Interval = 3000 };
 
     private readonly Panel _header = new()
@@ -93,12 +96,19 @@ public sealed class WorkJournalForm : Form
         Controls.Add(_content);
         Controls.Add(_header);
 
+        // ⚠ Form.TopMost를 껐다 켜는 방식(TopMost = false; TopMost = true;)은
+        // 내부적으로 HWND_NOTOPMOST → HWND_TOPMOST 순서로 두 번 Z-order를 바꾸는데,
+        // 이 과정에서 현재 활성 창에 WM_NCACTIVATE(비활성) 메시지가 전달되어
+        // 다른 프로그램의 모달 창 활성 표시가 사라지거나, 열려 있던 컨텍스트 메뉴/팝업이
+        // 저절로 닫히거나, 입력 필드의 커서가 사라지는 등의 부작용을 일으킨다.
+        // SWP_NOACTIVATE를 준 SetWindowPos로 HWND_TOPMOST 위치만 다시 확인시켜주면
+        // 활성 상태를 건드리지 않고 "맨 위 유지" 효과만 얻을 수 있다.
         _topMostTimer.Tick += (_, _) =>
         {
             if (Visible)
             {
-                TopMost = false;
-                TopMost = true;
+                NativeMethods.SetWindowPos(Handle, NativeMethods.HWND_TOPMOST, 0, 0, 0, 0,
+                    NativeMethods.SWP_NOMOVE | NativeMethods.SWP_NOSIZE | NativeMethods.SWP_NOACTIVATE);
             }
         };
         _topMostTimer.Start();
@@ -156,7 +166,8 @@ public sealed class WorkJournalForm : Form
                     Margin = new Padding(0, 10, 0, 2),
                 });
 
-                foreach (var item in group.OrderBy(i => i.Title))
+                // 시각이 있는 항목은 이른 시간 순으로, 시각이 없는 종일 일정·할일은 맨 위에 모아 보여준다.
+                foreach (var item in group.OrderBy(i => i.Time.HasValue).ThenBy(i => i.Time).ThenBy(i => i.Title))
                 {
                     _content.Controls.Add(BuildItemRow(item));
                 }
@@ -172,11 +183,13 @@ public sealed class WorkJournalForm : Form
 
         var row = new Panel { Width = 268, AutoSize = true, Margin = new Padding(4, 0, 0, 2) };
 
+        var timePrefix = item.Time is { } t ? t.ToString(@"hh\:mm") + "  " : "";
+
         var titleLabel = new Label
         {
             AutoSize = true,
             MaximumSize = new Size(260, 0),
-            Text = (hasDescription ? "📝 " : "• ") + item.Title,
+            Text = timePrefix + (hasDescription ? "📝 " : "• ") + item.Title,
             ForeColor = Color.FromArgb(60, 45, 10),
             Cursor = hasDescription ? Cursors.Hand : Cursors.Default,
         };

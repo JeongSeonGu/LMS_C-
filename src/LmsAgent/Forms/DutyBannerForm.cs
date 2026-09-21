@@ -43,14 +43,14 @@ public sealed class DutyBannerForm : Form
         TopMost = true;
         Size = new Size(360, 78);
         BackColor = UiTheme.Surface;
-        Cursor = Cursors.Hand;
         Opacity = 0;
 
         _fadeTimer = new Timer { Interval = 15 };
         _fadeTimer.Tick += OnFadeTick;
 
         VisibleChanged += OnVisibleChanged;
-        MouseClick += OnMouseClickAnywhere;
+        MouseClick += OnMouseClick;
+        MouseMove += OnMouseMove;
         Resize += (_, _) => ApplyRoundedRegion();
     }
 
@@ -118,9 +118,18 @@ public sealed class DutyBannerForm : Form
         }
     }
 
-    private void OnMouseClickAnywhere(object? sender, MouseEventArgs e)
+    /// <summary>배너 몸통을 눌러도 닫히지 않고, 우상단 닫기(×) 표시를 눌렀을 때만 닫습니다.</summary>
+    private void OnMouseClick(object? sender, MouseEventArgs e)
     {
-        Hide();
+        if (_closeRect.Contains(e.Location))
+        {
+            Hide();
+        }
+    }
+
+    private void OnMouseMove(object? sender, MouseEventArgs e)
+    {
+        Cursor = _closeRect.Contains(e.Location) ? Cursors.Hand : Cursors.Default;
     }
 
     private void ApplyRoundedRegion()

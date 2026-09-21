@@ -111,14 +111,17 @@ public sealed class WorkJournalService : IDisposable
                         continue;
                     }
 
+                    // 종일 일정은 특정 시각이 없으므로 null(업무 일지에서 맨 위에 모아 표시).
+                    var time = ev.AllDay ? (TimeSpan?)null : ev.StartDateTime.TimeOfDay;
+
                     if (ev.DeptId is int deptId && _session.MyDeptIds.Contains(deptId))
                     {
-                        items.Add(new WorkJournalItem(date, $"[일정] {ev.Title}", ev.Note));
+                        items.Add(new WorkJournalItem(date, $"[일정] {ev.Title}", ev.Note, time));
                     }
 
                     if (myTeacherId is int tid && ev.NotifyTargets.TeacherIds.Contains(tid))
                     {
-                        items.Add(new WorkJournalItem(date, $"[알림] {ev.Title}", ev.Note));
+                        items.Add(new WorkJournalItem(date, $"[알림] {ev.Title}", ev.Note, time));
                     }
                 }
             }
