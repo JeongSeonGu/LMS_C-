@@ -49,6 +49,12 @@ public sealed class DutyNotificationService : IDisposable
 
     private async Task CheckAsync()
     {
+        if (!_settings.DutyBannerEnabled)
+        {
+            HideBanner();
+            return;
+        }
+
         var watchedPositions = new List<string>();
         if (_settings.DutyNotifyVicePrincipal) watchedPositions.Add("교감");
         if (_settings.DutyNotifyPrincipal) watchedPositions.Add("교장");

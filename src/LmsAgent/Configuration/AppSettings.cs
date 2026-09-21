@@ -142,6 +142,11 @@ public sealed class AppSettings
     public bool ScheduleReminder60MinEnabled { get; set; }
 
     // ── 복무 ──────────────────────────────────────────────────
+    /// <summary>복무 알림 배너 기능 전체를 켜고 끄는 마스터 스위치. 꺼져 있으면 교감/교장
+    /// 체크 여부와 무관하게 배너가 전혀 표시되지 않는다. 이 설정이 생기기 전 사용자의
+    /// 기존 구성(교감/교장 체크박스)이 그대로 동작하도록 기본값은 true.</summary>
+    public bool DutyBannerEnabled { get; set; } = true;
+
     /// <summary>복무 알림 배너를 띄울 모니터의 Screen.AllScreens 인덱스.</summary>
     public int DutyMonitorIndex { get; set; }
     public bool DutyNotifyVicePrincipal { get; set; } // 교감
