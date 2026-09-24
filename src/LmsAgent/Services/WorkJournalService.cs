@@ -109,6 +109,7 @@ public sealed class WorkJournalService : IDisposable
         }
 
         var (rangeStart, rangeEnd) = ResolveRange();
+        _form.SetHeaderRange(rangeStart, rangeEnd);
         var myTeacherId = _session.Profile.TeacherId;
         var items = new List<WorkJournalItem>();
 

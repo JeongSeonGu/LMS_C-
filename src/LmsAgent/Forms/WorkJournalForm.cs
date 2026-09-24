@@ -196,11 +196,22 @@ public sealed class WorkJournalForm : Form
         Opacity = Math.Clamp(percent, 20, 100) / 100.0;
     }
 
+    /// <summary>환경설정 &gt; 업무의 출력 단위(일/주)에 맞춰 헤더에 날짜를 보여줍니다.
+    /// 일 단위: "업무 일지(2026.09.25)", 주 단위: "업무 일지(2026.09.21 ~ 2026.09.27)".</summary>
+    public void SetHeaderRange(DateTime rangeStart, DateTime rangeEnd)
+    {
+        var range = rangeStart == rangeEnd
+            ? rangeStart.ToString("yyyy.MM.dd")
+            : $"{rangeStart:yyyy.MM.dd} ~ {rangeEnd:yyyy.MM.dd}";
+        _titleLabel.Text = $"📌 업무 일지({range})";
+    }
+
     /// <summary>아직 로그인하지 않은 상태임을 사용자가 직관적으로 알 수 있도록 보여줍니다.
     /// 담당업무 필터링이 로그인 계정 기준이라 로그인 전에는 조회 자체를 하지 않으므로,
     /// 아무 안내 없이 빈 채로 두면 "고장났다"고 오해할 수 있다.</summary>
     public void SetLoggedOut()
     {
+        _titleLabel.Text = "📌 업무 일지";
         _content.SuspendLayout();
         _content.Controls.Clear();
         _content.Controls.Add(new Label
@@ -296,30 +307,71 @@ public sealed class WorkJournalForm : Form
         };
     }
 
-    /// <summary>단일 레이블 항목은 별도 Panel로 감쌀 필요가 없다 — AutoSize Panel에 수동으로
-    /// Height까지 다시 지정하는 이중 관리가 예전 행간 오정렬의 원인이었으므로, 이런 항목은
-    /// FlowLayoutPanel에 레이블을 직접 추가해 레이아웃 엔진이 크기를 전담하게 한다.</summary>
+    /// <summary>제목과 상태 배지를 같은 줄에 문자열로 이어 붙이면("[기한초과] 제목") 둘이
+    /// 하나로 뭉쳐 보여서 무엇이 분류·상태이고 무엇이 실제 내용인지 구분하기 어려웠다.
+    /// 지금은 제목을 한 줄로, 배지가 있으면 그 아래 줄에 색이 있는 배지로 따로 보여준다.
+    /// 중첩 FlowLayoutPanel(TopDown)에 맡기면 각 줄의 높이를 직접 계산할 필요가 없어
+    /// AutoSize Panel에 수동으로 Height를 다시 지정하다 생기던 행간 오정렬도 원천적으로
+    /// 피할 수 있다.</summary>
     private Control BuildAlertRow(WorkJournalAlert alert)
     {
-        var badge = string.IsNullOrWhiteSpace(alert.Badge) ? "" : $"[{alert.Badge}] ";
         var hasLink = !string.IsNullOrWhiteSpace(alert.Link);
 
-        var label = new Label
+        var card = new FlowLayoutPanel
         {
             AutoSize = true,
-            MaximumSize = new Size(260, 0),
-            Text = (hasLink ? "▶ " : "• ") + badge + alert.Title,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Margin = new Padding(4, 0, 0, 6),
+        };
+
+        var titleLabel = new Label
+        {
+            AutoSize = true,
+            MaximumSize = new Size(252, 0),
+            Text = (hasLink ? "▶ " : "• ") + alert.Title,
             ForeColor = hasLink ? ExpandableColor : Color.FromArgb(60, 45, 10),
             Cursor = hasLink ? Cursors.Hand : Cursors.Default,
-            Margin = new Padding(4, 0, 0, 4),
+            Margin = new Padding(0),
         };
 
         if (hasLink)
         {
-            label.Click += (_, _) => LinkClicked?.Invoke(this, alert.Link!);
+            titleLabel.Click += (_, _) => LinkClicked?.Invoke(this, alert.Link!);
         }
 
-        return label;
+        card.Controls.Add(titleLabel);
+
+        if (!string.IsNullOrWhiteSpace(alert.Badge))
+        {
+            card.Controls.Add(BuildBadge(alert.Badge));
+        }
+
+        return card;
+    }
+
+    /// <summary>"긴급"·"기한초과"·"보완요청"·"확인대기" 같은 상태를 웹 화면처럼 색이 있는
+    /// 작은 배지로 보여준다(둥근 모서리는 아니지만, 텍스트에 섞이지 않고 한눈에 띄는 것이
+    /// 목적이라 이 정도로 충분하다).</summary>
+    private static Label BuildBadge(string text)
+    {
+        var color = text switch
+        {
+            "긴급" or "기한초과" or "보완요청" => UiTheme.Danger,
+            _ => UiTheme.TextSecondary, // "확인대기" 등
+        };
+
+        return new Label
+        {
+            AutoSize = true,
+            Text = text,
+            ForeColor = Color.White,
+            BackColor = color,
+            Font = new Font(UiTheme.BaseFont.FontFamily, 7.5F, FontStyle.Bold),
+            Padding = new Padding(6, 1, 6, 1),
+            Margin = new Padding(16, 2, 0, 0),
+        };
     }
 
     private Control BuildItemRow(WorkJournalItem item)
