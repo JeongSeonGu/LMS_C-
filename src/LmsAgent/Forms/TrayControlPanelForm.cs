@@ -7,11 +7,14 @@ namespace LmsAgent.Forms;
 
 /// <summary>
 /// 트레이 아이콘을 왼쪽 클릭했을 때 뜨는 창입니다. 오른쪽 클릭 시 나오는 ContextMenuStrip과
-/// 완전히 같은 메뉴 구성을, 일반 윈도우 프로그램처럼 화면 가운데에 뜨는 flat 스타일 창으로
-/// 다시 보여줍니다 — 왼쪽에 아이콘 사이드바(카테고리), 오른쪽에 그 카테고리의 버튼들을
-/// 보여주는 구성입니다. 각 항목의 실제 동작은 여전히 원본 ContextMenuStrip(TrayApplicationContext)이
-/// 갖고 있으므로, 이 창은 그 항목의 <see cref="ToolStripItem.PerformClick"/>을 그대로 호출할
-/// 뿐 별도의 로직을 갖지 않습니다 — 메뉴 구성이 바뀌어도 이 창을 따로 손볼 필요가 없습니다.
+/// 완전히 같은 메뉴 구성을, 일반 윈도우 프로그램처럼 화면 위쪽 가운데에 뜨는 flat 스타일
+/// 창(최대 1024×768)으로 다시 보여줍니다 — 왼쪽에 아이콘 사이드바(카테고리), 오른쪽에 그
+/// 카테고리의 버튼들을 보여주는 구성입니다. 각 항목의 실제 동작은 여전히 원본
+/// ContextMenuStrip(TrayApplicationContext)이 갖고 있으므로, 이 창은 그 항목의
+/// <see cref="ToolStripItem.PerformClick"/>을 그대로 호출할 뿐 별도의 로직을 갖지 않습니다
+/// — 메뉴 구성이 바뀌어도 이 창을 따로 손볼 필요가 없습니다. 이미 열려 있으면 새로 만들지
+/// 않고 기존 창을 앞으로 가져오는 것은 <see cref="LmsAgent.App.TrayApplicationContext"/>의
+/// 몫입니다(이 클래스는 자기 자신이 중복 실행되었는지는 알 수 없습니다).
 /// </summary>
 public sealed class TrayControlPanelForm : Form
 {
@@ -36,15 +39,28 @@ public sealed class TrayControlPanelForm : Form
     private Button? _selectedNavButton;
     private bool _dragging;
     private Point _dragStart;
+    private int _actionWidth = 380;
 
     public TrayControlPanelForm(ContextMenuStrip menu)
     {
         FormBorderStyle = FormBorderStyle.None;
-        StartPosition = FormStartPosition.CenterScreen;
+        StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;
-        Size = new Size(680, 480);
         BackColor = UiTheme.Border; // 바깥쪽 얇은 테두리처럼 보이는 배경색
         Padding = new Padding(1);
+
+        // 학사달력 배경화면(월 단위)과 같은 규칙 — 최대 1024×768, 화면보다 작은 모니터에서는
+        // 그 작업 영역에 맞춘다. 화면 가운데가 아니라 "위쪽"에 띄워서, 트레이 아이콘을 눌렀을
+        // 때 새 창이 나타났다는 것을 한눈에 알아볼 수 있게 한다.
+        var area = Screen.FromPoint(Cursor.Position).WorkingArea;
+        var width = Math.Min(1024, area.Width);
+        var height = Math.Min(768, area.Height);
+        Size = new Size(width, height);
+        Location = new Point(area.Left + (area.Width - width) / 2, area.Top + 24);
+
+        // 창이 커진 만큼(1024×768) 오른쪽 버튼 목록도 380px 고정폭 대신 사이드바 폭·여백을
+        // 뺀 만큼 넓게 채운다(스크롤바 여유분 포함).
+        _actionWidth = Math.Max(380, width - _sidebar.Width - 96);
 
         BuildHeader();
         BuildStatusBar(menu.Items);
@@ -232,7 +248,7 @@ public sealed class TrayControlPanelForm : Form
             {
                 _content.Controls.Add(new Panel
                 {
-                    Width = 380, Height = 1, BackColor = UiTheme.Border, Margin = new Padding(0, 8, 0, 8),
+                    Width = _actionWidth, Height = 1, BackColor = UiTheme.Border, Margin = new Padding(0, 8, 0, 8),
                 });
             }
             else if (child is ToolStripMenuItem childItem)
@@ -248,7 +264,7 @@ public sealed class TrayControlPanelForm : Form
     {
         var button = new Button
         {
-            Width = 380,
+            Width = _actionWidth,
             Height = 44,
             Text = item.Text.Replace("...", "").TrimEnd(),
             TextAlign = ContentAlignment.MiddleLeft,

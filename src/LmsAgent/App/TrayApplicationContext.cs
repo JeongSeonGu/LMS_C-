@@ -34,6 +34,9 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly GlobalHotkeyService _hotkeyService = new();
     private readonly NotifyIcon _trayIcon;
 
+    // 왼쪽 클릭으로 여는 flat 창 — 이미 떠 있으면 새로 만들지 않고 앞으로 가져오기 위해 보관.
+    private TrayControlPanelForm? _trayControlPanel;
+
     // "학사달력보기"/"관리자 복무상황 보기" 단축키 토글용 인스턴스(트레이 메뉴의 모달 흐름과는 별개).
     private ScheduleListForm? _scheduleHotkeyForm;
     private DutyRegisterForm? _dutyHotkeyForm;
@@ -148,14 +151,30 @@ public sealed class TrayApplicationContext : ApplicationContext
         _trayIcon.DoubleClick += (_, _) => OnUserInfoClicked(null, EventArgs.Empty);
 
         // 오른쪽 클릭은 기존 ContextMenuStrip(NotifyIcon이 자동으로 보여줌)을 그대로 쓰고,
-        // 왼쪽 클릭은 같은 메뉴 항목들을 flat(WPF 스타일) 창의 버튼 목록으로 다시 보여준다.
+        // 왼쪽 클릭은 같은 메뉴 항목들을 flat 스타일 창의 버튼 목록으로 다시 보여준다.
+        // 이미 열려 있는 상태에서 또 클릭하면 새 창을 띄우는 대신 기존 창을 앞으로 가져온다.
         _trayIcon.MouseClick += (_, e) =>
         {
-            if (e.Button == MouseButtons.Left)
+            if (e.Button != MouseButtons.Left)
             {
-                using var panel = new TrayControlPanelForm(menu);
-                panel.ShowDialog();
+                return;
             }
+
+            if (_trayControlPanel is { IsDisposed: false })
+            {
+                if (_trayControlPanel.WindowState == FormWindowState.Minimized)
+                {
+                    _trayControlPanel.WindowState = FormWindowState.Normal;
+                }
+
+                _trayControlPanel.Activate();
+                return;
+            }
+
+            _trayControlPanel = new TrayControlPanelForm(menu);
+            _trayControlPanel.FormClosed += (_, _) => _trayControlPanel = null;
+            _trayControlPanel.Show();
+            _trayControlPanel.Activate();
         };
 
         _wsClient.Start();
@@ -667,6 +686,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _hotkeyService.Dispose();
         _scheduleHotkeyForm?.Dispose();
         _dutyHotkeyForm?.Dispose();
+        _trayControlPanel?.Dispose();
         _api.Dispose();
         _ = _wsClient.StopAsync();
         ExitThread();
