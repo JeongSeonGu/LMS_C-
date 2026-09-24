@@ -43,6 +43,19 @@ public sealed class DomainEventData
     /// <summary>학사 일정(work.calendar.event.*)의 담당업무 변경 감지용(웹소켓_데이터통신규칙.md §7-A).
     /// deptFrom/deptTo 외의 타입에는 오지 않으므로 다른 이벤트에서는 항상 null이다.</summary>
     public EventHint? Hint { get; set; }
+
+    /// <summary>work.notice.created 전용 — 재조회 없이 바로 토스트를 띄우기 위한 표시용
+    /// 필드(웹소켓_데이터통신규칙.md §7-C). title이 없는(구버전 서버·다른 이벤트) 경우
+    /// 이 필드 자체가 null일 수 있다 — 그 경우 토스트 없이 조용히 무시해야 한다.</summary>
+    public DomainEventMessage? Message { get; set; }
+}
+
+/// <summary>§7-C — title 최대 80자·body 최대 200자·link 최대 300자로 서버가 잘라서 보낸다.</summary>
+public sealed class DomainEventMessage
+{
+    public string? Title { get; set; }
+    public string? Body { get; set; }
+    public string? Link { get; set; }
 }
 
 public sealed class DomainEventOrigin

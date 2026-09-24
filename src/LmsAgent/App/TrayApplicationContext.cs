@@ -39,6 +39,12 @@ public sealed class TrayApplicationContext : ApplicationContext
     // 왼쪽 클릭으로 여는 flat 창 — 이미 떠 있으면 새로 만들지 않고 앞으로 가져오기 위해 보관.
     private TrayControlPanelForm? _trayControlPanel;
 
+    // NotifyIcon.BalloonTipClicked는 풍선을 띄운 모든 곳(일정 알림/담당업무 변경 알림/공지
+    // 토스트)이 공유하는 단 하나의 이벤트라서, "다음 풍선 클릭 시 열 링크"를 필드 하나로
+    // 추적한다 — 공지 토스트가 아닌 다른 풍선을 띄울 때는 반드시 null로 비워서, 방금 뜬
+    // 무관한 풍선을 클릭했는데 예전 공지 링크가 열리는 일이 없도록 한다.
+    private string? _pendingNoticeLink;
+
     // "학사달력보기"/"관리자 복무상황 보기" 단축키 토글용 인스턴스(트레이 메뉴의 모달 흐름과는 별개).
     private ScheduleListForm? _scheduleHotkeyForm;
     private DutyRegisterForm? _dutyHotkeyForm;
@@ -156,6 +162,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             ContextMenuStrip = menu,
         };
         _trayIcon.DoubleClick += (_, _) => OnUserInfoClicked(null, EventArgs.Empty);
+        _trayIcon.BalloonTipClicked += OnNoticeBalloonClicked;
 
         // 오른쪽 클릭은 기존 ContextMenuStrip(NotifyIcon이 자동으로 보여줌)을 그대로 쓰고,
         // 왼쪽 클릭은 같은 메뉴 항목들을 flat 스타일 창의 버튼 목록으로 다시 보여준다.
@@ -318,6 +325,7 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void OnScheduleReminderRaised(string title, string message)
     {
+        _pendingNoticeLink = null;
         RunOnUiThread(() => _trayIcon.ShowBalloonTip(6000, title, message, ToolTipIcon.Info));
     }
 
@@ -412,8 +420,35 @@ public sealed class TrayApplicationContext : ApplicationContext
                 }
 
                 _session.Clear();
+                _pendingNoticeLink = null;
                 _trayIcon.ShowBalloonTip(6000, "로그아웃됨",
                     "다른 곳에서 로그아웃되어 연결이 해제되었습니다.", ToolTipIcon.Info);
+            });
+            return;
+        }
+
+        // 공지/요청 등록 시 웹이 재조회 없이 바로 토스트를 띄우라고 함께 보내는 표시용
+        // 필드(웹소켓_데이터통신규칙.md §7-C). scope=notice에 대한 기존 뱃지/목록 갱신
+        // (OnRealtimeScopeChanged가 이미 처리)은 이것과 무관하게 그대로 계속 동작해야
+        // 하므로, 여기서는 새 팝업만 "추가"할 뿐 그 로직을 대체하지 않는다. message가
+        // 없으면(구버전 서버이거나 이 이벤트 타입이 처음부터 안 보내는 경우) 조용히 무시한다.
+        if (ev.Type == "work.notice.created")
+        {
+            var title = ev.Message?.Title;
+            if (string.IsNullOrWhiteSpace(title))
+            {
+                return;
+            }
+
+            var body = ev.Message?.Body ?? "";
+            // 서버가 title 80자·body 200자로 잘라 보내지만, 방어적으로 한 번 더 자른다.
+            if (title.Length > 80) title = title[..80];
+            if (body.Length > 200) body = body[..200];
+
+            RunOnUiThread(() =>
+            {
+                _pendingNoticeLink = ev.Message?.Link;
+                _trayIcon.ShowBalloonTip(8000, title, body, ToolTipIcon.Info);
             });
             return;
         }
@@ -421,8 +456,24 @@ public sealed class TrayApplicationContext : ApplicationContext
         RunOnUiThread(() => _myDutyChangeService.HandleDomainEvent(ev));
     }
 
+    /// <summary>공지 토스트를 클릭하면 SSO 자동 로그인으로 해당 글을 바로 연다. 다른 풍선
+    /// (일정 알림/담당업무 변경 알림)을 클릭했을 때는 <see cref="_pendingNoticeLink"/>가
+    /// null이므로 아무 일도 일어나지 않는다.</summary>
+    private void OnNoticeBalloonClicked(object? sender, EventArgs e)
+    {
+        var link = _pendingNoticeLink;
+        _pendingNoticeLink = null;
+        if (string.IsNullOrWhiteSpace(link))
+        {
+            return;
+        }
+
+        _ = SsoLinkOpener.OpenAsync(_api, _session, link);
+    }
+
     private void OnMyDutyChangeNotify(string message)
     {
+        _pendingNoticeLink = null;
         RunOnUiThread(() => _trayIcon.ShowBalloonTip(6000, "담당업무 변경 알림", message, ToolTipIcon.Info));
     }
 

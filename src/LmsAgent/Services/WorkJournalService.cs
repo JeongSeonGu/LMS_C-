@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Threading.Tasks;
 using LmsAgent.Configuration;
@@ -209,53 +208,8 @@ public sealed class WorkJournalService : IDisposable
         _form.SetContent(alerts, items);
     }
 
-    /// <summary>
-    /// C#에서 이미 로그인되어 있으면 SSO 1회용 티켓을 발급받아, 클릭한 상세 주소로 바로
-    /// 이동하도록 next 파라미터를 붙여 연다(SSO 자동 로그인 적용 안내.md §5-7).
-    /// 로그인 전이거나 티켓 발급이 실패하면 평소처럼 연다.
-    /// </summary>
-    private async Task OpenLinkWithSsoAsync(string relativeLink)
-    {
-        var absoluteUrl = relativeLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-            ? relativeLink
-            : "https://future-class.kr" + relativeLink;
-
-        if (_session.IsLoggedIn)
-        {
-            try
-            {
-                var ticket = await _api.GetSsoTicketAsync().ConfigureAwait(true);
-                if (ticket.Ok && !string.IsNullOrWhiteSpace(ticket.Data?.LoginUrl))
-                {
-                    // ⚠ next는 반드시 이 서비스 안의 "상대경로"(/SchoolWork/WorkSupport/...)여야
-                    // 한다 — 서버가 오픈 리다이렉트 방지를 위해 스킴이 있는 절대 URL은 전부
-                    // 무시하고 대시보드로 보낸다(SSO 자동 로그인 적용 안내.md §5-7). alert.Link는
-                    // 이미 이런 상대경로로 내려오므로(학사달력외_연동가이드.md), 그대로 쓰면 되고
-                    // 혹시 절대 URL 형태로 들어오면 경로+쿼리만 추려서 보낸다.
-                    var nextPath = relativeLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                        ? new Uri(relativeLink).PathAndQuery
-                        : relativeLink;
-                    var separator = ticket.Data!.LoginUrl.Contains('?') ? "&" : "?";
-                    var loginUrl = $"{ticket.Data.LoginUrl}{separator}next={Uri.EscapeDataString(nextPath)}";
-                    Process.Start(new ProcessStartInfo(loginUrl) { UseShellExecute = true });
-                    return;
-                }
-            }
-            catch
-            {
-                // 티켓 발급 실패(세션 만료 등)는 치명적이지 않다 — 아래에서 평소처럼 연다.
-            }
-        }
-
-        try
-        {
-            Process.Start(new ProcessStartInfo(absoluteUrl) { UseShellExecute = true });
-        }
-        catch
-        {
-            // 브라우저를 열지 못해도 업무 일지 자체는 계속 동작해야 한다.
-        }
-    }
+    /// <summary>업무 일지 항목 클릭 시 SSO로 자동 로그인하며 연다(SsoLinkOpener 공통 로직).</summary>
+    private Task OpenLinkWithSsoAsync(string relativeLink) => SsoLinkOpener.OpenAsync(_api, _session, relativeLink);
 
     /// <summary>
     /// 학사 달력 밖의 요약 항목(요청사항 · 알림 · 법정연수)을 모읍니다(학사달력외_연동가이드.md).
