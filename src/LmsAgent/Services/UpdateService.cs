@@ -19,6 +19,9 @@ namespace LmsAgent.Services;
 /// </summary>
 public enum UpdateCheckResult
 {
+    /// <summary>manifest 확인 결과 더 높은 버전이 있다 — 사용자에게 물어본 뒤 다운로드를 진행해야 한다.</summary>
+    Available,
+
     /// <summary>새 버전을 내려받아 적용했다. 호출자는 현재 프로세스를 즉시 종료해야 한다.</summary>
     Applied,
 
@@ -33,6 +36,19 @@ public enum UpdateCheckResult
 
     /// <summary>다운로드는 됐지만 sha256 체크섬이 manifest.json과 다르다(파일 손상/오설정).</summary>
     ChecksumMismatch,
+}
+
+/// <summary>
+/// <see cref="UpdateService.CheckForUpdateAsync"/>의 반환값. <see cref="Result"/>가
+/// <see cref="UpdateCheckResult.Available"/>일 때만 <see cref="Manifest"/>·<see cref="CurrentVersion"/>·
+/// <see cref="LatestVersion"/>이 채워진다(확인 화면에 "1.2.0 → 1.3.0" 같은 안내를 보여주기 위함).
+/// </summary>
+public sealed class UpdateCheckOutcome
+{
+    public required UpdateCheckResult Result { get; init; }
+    public UpdateManifest? Manifest { get; init; }
+    public Version? CurrentVersion { get; init; }
+    public Version? LatestVersion { get; init; }
 }
 
 /// <summary>
@@ -56,61 +72,70 @@ public sealed class UpdateService
     }
 
     /// <summary>
-    /// 새 버전이 있으면 내려받아 적용하고 true를 반환합니다.
-    /// 이 경우 호출자는 현재 프로세스를 즉시 종료해야 합니다.
-    /// 업데이트가 없거나 확인에 실패하면 false를 반환하며, 이 실패가 프로그램 실행을 막지는 않습니다.
-    /// 실패 원인은 %AppData%\LmsAgent\realtime.log에 남습니다(자세한 원인이 필요하면
-    /// <see cref="CheckForUpdateAsync"/>를 직접 호출하세요 — "업데이트 확인..." 메뉴가 그렇게 합니다).
+    /// manifest.json을 조회해서 더 높은 버전이 있는지만 확인합니다(다운로드는 하지 않습니다).
+    /// 새 버전이 있으면 <see cref="UpdateCheckResult.Available"/>과 함께 manifest·버전 정보를
+    /// 담아 반환하니, 호출자가 사용자에게 물어본 뒤 <see cref="DownloadAndApplyAsync"/>를
+    /// 이어서 호출하세요(업데이트 UX: 확인 → 안내 팝업 → 동의 시 진행률 표시).
     /// </summary>
-    public bool CheckAndLaunchUpdaterIfAvailable()
-    {
-        try
-        {
-            return CheckForUpdateAsync().GetAwaiter().GetResult() == UpdateCheckResult.Applied;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"업데이트 확인 실패: {ex.Message}");
-            RealtimeLog.Write($"[업데이트] 확인 중 예외 발생: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 새 버전이 있으면 내려받아 적용하고(<see cref="UpdateCheckResult.Applied"/>) 성공 시
-    /// 호출자는 현재 프로세스를 즉시 종료해야 합니다. 그 외의 경우 왜 업데이트가 이루어지지
-    /// 않았는지를 나타내는 값을 반환하며, 각 단계의 실패 원인은 실시간 연동 로그에 남깁니다.
-    /// </summary>
-    public async Task<UpdateCheckResult> CheckForUpdateAsync()
+    public async Task<UpdateCheckOutcome> CheckForUpdateAsync()
     {
         var manifest = await FetchManifestAsync().ConfigureAwait(false);
         if (manifest is null)
         {
-            return UpdateCheckResult.ManifestUnavailable;
+            return new UpdateCheckOutcome { Result = UpdateCheckResult.ManifestUnavailable };
         }
 
         var currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0, 0);
         if (!Version.TryParse(manifest.Version, out var latestVersion))
         {
             RealtimeLog.Write($"[업데이트] manifest.json의 version 값을 해석할 수 없습니다: \"{manifest.Version}\"");
-            return UpdateCheckResult.ManifestUnavailable;
+            return new UpdateCheckOutcome { Result = UpdateCheckResult.ManifestUnavailable };
         }
 
         if (latestVersion <= currentVersion)
         {
             RealtimeLog.Write($"[업데이트] 이미 최신 버전입니다 (현재 {currentVersion}, 서버 {latestVersion}).");
-            return UpdateCheckResult.UpToDate;
+            return new UpdateCheckOutcome
+            {
+                Result = UpdateCheckResult.UpToDate, CurrentVersion = currentVersion, LatestVersion = latestVersion,
+            };
         }
 
-        RealtimeLog.Write($"[업데이트] 새 버전 발견: {currentVersion} → {latestVersion}. 다운로드를 시작합니다.");
+        RealtimeLog.Write($"[업데이트] 새 버전 발견: {currentVersion} → {latestVersion}. 사용자 확인을 기다립니다.");
+        return new UpdateCheckOutcome
+        {
+            Result = UpdateCheckResult.Available,
+            Manifest = manifest,
+            CurrentVersion = currentVersion,
+            LatestVersion = latestVersion,
+        };
+    }
 
-        var (zipPath, downloadResult) = await DownloadAsync(manifest).ConfigureAwait(false);
+    /// <summary>
+    /// 사용자가 업데이트에 동의한 뒤 실제로 다운로드→체크섬 검증→적용을 진행합니다.
+    /// <paramref name="onProgress"/>는 0~100 사이의 진행률로 호출되며(전체 크기를 모르면
+    /// 호출되지 않습니다 — 호출자는 그 경우 진행률 미상(Marquee) 표시를 유지하면 됩니다),
+    /// 백그라운드 스레드에서 호출되므로 UI를 직접 건드리지 말고 Control.BeginInvoke로
+    /// 마샬링해야 합니다. 성공(<see cref="UpdateCheckResult.Applied"/>)하면 내부에서 이미
+    /// 새 프로세스를 띄우고 현재 프로세스를 종료(Environment.Exit)하므로, 사실상 이 값이
+    /// 정상적으로 "반환"되는 경우는 없습니다.
+    /// </summary>
+    public async Task<UpdateCheckResult> DownloadAndApplyAsync(UpdateManifest manifest, Action<double>? onProgress = null)
+    {
+        RealtimeLog.Write($"[업데이트] 다운로드를 시작합니다 (주소: {manifest.DownloadUrl}).");
+
+        var (zipPath, downloadResult) = await DownloadAsync(manifest, onProgress).ConfigureAwait(false);
         if (zipPath is null)
         {
             return downloadResult;
         }
 
+        onProgress?.Invoke(100);
         RealtimeLog.Write("[업데이트] 다운로드·체크섬 검증 완료. 적용 스크립트를 실행하고 프로그램을 종료합니다.");
+
+        // 사용자가 "완료"를 실제로 인지할 수 있도록 진행률 100%를 잠깐 보여준 뒤 종료한다.
+        await Task.Delay(400).ConfigureAwait(false);
+
         LaunchUpdaterAndExitCurrentProcess(zipPath);
         return UpdateCheckResult.Applied;
     }
@@ -159,7 +184,8 @@ public sealed class UpdateService
         }
     }
 
-    private static async Task<(string? ZipPath, UpdateCheckResult Result)> DownloadAsync(UpdateManifest manifest)
+    private static async Task<(string? ZipPath, UpdateCheckResult Result)> DownloadAsync(
+        UpdateManifest manifest, Action<double>? onProgress)
     {
         if (string.IsNullOrWhiteSpace(manifest.DownloadUrl))
         {
@@ -185,10 +211,26 @@ public sealed class UpdateService
                 return (null, UpdateCheckResult.DownloadFailed);
             }
 
+            var totalBytes = response.Content.Headers.ContentLength;
+
             await using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
             await using (var fileStream = File.Create(zipPath))
             {
-                await responseStream.CopyToAsync(fileStream).ConfigureAwait(false);
+                // 서버가 Content-Length를 안 줄 수도 있으므로(그 경우 진행률 없이 미상 표시),
+                // 직접 청크 단위로 읽으면서 알 때만 퍼센트를 계산해 콜백한다.
+                var buffer = new byte[81920];
+                long totalRead = 0;
+                int read;
+                while ((read = await responseStream.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read)).ConfigureAwait(false);
+                    totalRead += read;
+
+                    if (totalBytes is > 0)
+                    {
+                        onProgress?.Invoke(Math.Min(99.0, totalRead * 100.0 / totalBytes.Value));
+                    }
+                }
             }
         }
         catch (Exception ex)

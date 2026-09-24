@@ -595,32 +595,41 @@ public sealed class TrayApplicationContext : ApplicationContext
     private async void OnCheckUpdateClicked(object? sender, EventArgs e)
     {
         var updateService = new UpdateService(_settings);
-        var result = await updateService.CheckForUpdateAsync();
-
-        if (result == UpdateCheckResult.Applied)
+        UpdateCheckOutcome outcome;
+        try
         {
-            _trayIcon.Visible = false;
-            ExitThread();
+            outcome = await updateService.CheckForUpdateAsync();
+        }
+        catch (Exception ex)
+        {
+            RealtimeLog.Write($"[업데이트] 확인 중 예외 발생: {ex.Message}");
+            MessageBox.Show(
+                "업데이트 확인 중 오류가 발생했습니다.\n자세한 원인은 \"실시간 연동 로그 열기...\"에 남아 있습니다.",
+                "업데이트 확인", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        if (outcome.Result == UpdateCheckResult.Available)
+        {
+            // 확인 → 안내 팝업 → 동의 시 진행률 표시까지는 UpdateFlow가 전담한다.
+            if (UpdateFlow.Run(updateService, outcome))
+            {
+                _trayIcon.Visible = false;
+                ExitThread();
+            }
             return;
         }
 
         // "이미 최신 버전"과 "확인 자체에 실패함"을 구분해서 보여준다 — 예전에는 둘 다 같은
         // 메시지였어서, 업데이트 서버 주소가 잘못되어도 마치 최신 버전인 것처럼 보였다.
-        var (text, icon) = result switch
+        var (text, icon) = outcome.Result switch
         {
             UpdateCheckResult.UpToDate =>
                 ("현재 최신 버전을 사용 중입니다.", MessageBoxIcon.Information),
-            UpdateCheckResult.ManifestUnavailable =>
+            _ =>
                 ("업데이트 서버에서 버전 정보를 가져오지 못했습니다.\n" +
                  "환경설정 > 네트워크의 \"업데이트 서버\" 주소를 확인해주세요.\n" +
                  "자세한 원인은 트레이 메뉴 \"실시간 연동 로그 열기...\"에 남아 있습니다.", MessageBoxIcon.Warning),
-            UpdateCheckResult.DownloadFailed =>
-                ("새 버전 파일을 내려받지 못했습니다.\n" +
-                 "자세한 원인은 트레이 메뉴 \"실시간 연동 로그 열기...\"에 남아 있습니다.", MessageBoxIcon.Warning),
-            UpdateCheckResult.ChecksumMismatch =>
-                ("내려받은 파일의 체크섬이 manifest.json과 일치하지 않아 적용하지 않았습니다.\n" +
-                 "manifest.json의 sha256 값과 실제 zip 파일이 맞는지 확인해주세요.", MessageBoxIcon.Warning),
-            _ => ("현재 최신 버전을 사용 중입니다.", MessageBoxIcon.Information),
         };
 
         MessageBox.Show(text, "업데이트 확인", MessageBoxButtons.OK, icon);
