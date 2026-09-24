@@ -31,6 +31,8 @@ public sealed class TrayApplicationContext : ApplicationContext
     private readonly ScheduleReminderService _scheduleReminderService;
     private readonly WorkJournalService _workJournalService;
     private readonly MyDutyChangeService _myDutyChangeService;
+    private readonly SessionWatcherService _sessionWatcherService;
+    private readonly PersonalScheduleStore _personalScheduleStore;
     private readonly GlobalHotkeyService _hotkeyService = new();
     private readonly NotifyIcon _trayIcon;
 
@@ -76,8 +78,10 @@ public sealed class TrayApplicationContext : ApplicationContext
         _licenseGuardService = new LicenseGuardService(_api, _settings);
         _breakBoardService = new BreakBoardService(_settings);
         _scheduleReminderService = new ScheduleReminderService(_api, _session, _settings);
-        _workJournalService = new WorkJournalService(_api, _session, _settings);
+        _personalScheduleStore = new PersonalScheduleStore(_settings);
+        _workJournalService = new WorkJournalService(_api, _session, _settings, _personalScheduleStore);
         _myDutyChangeService = new MyDutyChangeService(_api, _session);
+        _sessionWatcherService = new SessionWatcherService(_api, _session);
 
         _session.SessionChanged += OnSessionChanged;
         _session.ScheduleChanged += OnScheduleChanged;
@@ -124,6 +128,9 @@ public sealed class TrayApplicationContext : ApplicationContext
         _userInfoItem = new ToolStripMenuItem("정보 수정...", null, OnUserInfoClicked) { Enabled = false };
         userMenu.DropDownItems.Add(_loginItem);
         userMenu.DropDownItems.Add(_userInfoItem);
+        userMenu.DropDownItems.Add(new ToolStripSeparator());
+        // 개인일정은 서버/DB와 무관한 로컬 전용 기능이라 로그인 여부와 상관없이 항상 쓸 수 있다.
+        userMenu.DropDownItems.Add(new ToolStripMenuItem("개인일정 등록...", null, OnPersonalScheduleClicked));
         menu.Items.Add(userMenu);
 
         var basicInfoMenu = new ToolStripMenuItem("기본정보");
@@ -183,6 +190,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _scheduleOverlayService.ApplySettings();
         _breakBoardService.Start();
         _scheduleReminderService.Start();
+        _sessionWatcherService.Start();
         _workJournalService.ApplySettings();
         RegisterHotkeys();
     }
@@ -492,6 +500,15 @@ public sealed class TrayApplicationContext : ApplicationContext
         form.ShowDialog();
     }
 
+    /// <summary>개인일정은 서버/DB와 무관한 로컬 전용 기능이라 로그인 여부와 상관없이 항상 열 수 있다.
+    /// 닫힌 뒤 업무 일지를 다시 그려서, 방금 추가·수정·삭제한 개인일정이 바로 반영되게 한다.</summary>
+    private void OnPersonalScheduleClicked(object? sender, EventArgs e)
+    {
+        using var form = new PersonalScheduleForm(_personalScheduleStore);
+        form.ShowDialog();
+        _workJournalService.RefreshNow();
+    }
+
     private void OnScheduleRegisterClicked(object? sender, EventArgs e)
     {
         if (!_session.IsLoggedIn)
@@ -682,6 +699,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         _licenseGuardService.Dispose();
         _breakBoardService.Dispose();
         _scheduleReminderService.Dispose();
+        _sessionWatcherService.Dispose();
         _workJournalService.Dispose();
         _hotkeyService.Dispose();
         _scheduleHotkeyForm?.Dispose();

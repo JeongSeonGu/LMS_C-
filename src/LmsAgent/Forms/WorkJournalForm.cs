@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
@@ -19,18 +18,27 @@ namespace LmsAgent.Forms;
 public sealed class WorkJournalItem
 {
     /// <param name="time">일정의 시작 시각. 종일 일정·할일처럼 특정 시각이 없으면 null(맨 위에 먼저 표시).</param>
-    public WorkJournalItem(DateTime date, string title, string? description, TimeSpan? time = null)
+    /// <param name="icon">기본 "•"/"▶" 대신 쓸 아이콘(이모지). 개인일정처럼 학사 일정과 구분해야
+    /// 하는 항목에 사용합니다(null이면 기존처럼 설명 유무에 따라 자동으로 정해집니다).</param>
+    /// <param name="accentColor">제목 글자색을 이 색으로 덮어씁니다(null이면 기존 기본색을 씁니다).</param>
+    public WorkJournalItem(
+        DateTime date, string title, string? description, TimeSpan? time = null,
+        string? icon = null, Color? accentColor = null)
     {
         Date = date;
         Title = title;
         Description = string.IsNullOrWhiteSpace(description) ? null : description;
         Time = time;
+        Icon = icon;
+        AccentColor = accentColor;
     }
 
     public DateTime Date { get; }
     public string Title { get; }
     public string? Description { get; }
     public TimeSpan? Time { get; }
+    public string? Icon { get; }
+    public Color? AccentColor { get; }
 }
 
 /// <summary>
@@ -87,6 +95,11 @@ public sealed class WorkJournalForm : Form
     /// 창(들)이 뜬다(<see cref="StickyNoteForm"/>). 이 폼은 그 창을 직접 만들지 않고, 이
     /// 이벤트를 구독한 쪽(WorkJournalService)이 StickyNoteService로 열어 준다.</summary>
     public event EventHandler? MemoButtonClicked;
+
+    /// <summary>알림/요청사항/법정연수 항목의 링크를 클릭했을 때 발생합니다(상대 경로 그대로).
+    /// 이 폼은 브라우저를 직접 열지 않는다 — C#이 로그인되어 있으면 SSO 티켓으로 열어야 하는데,
+    /// 그 로직(및 API 접근)은 WorkJournalService가 갖고 있으므로 여기서는 요청만 알린다.</summary>
+    public event EventHandler<string>? LinkClicked;
 
     private readonly Button _memoButton = new()
     {
@@ -283,9 +296,11 @@ public sealed class WorkJournalForm : Form
         };
     }
 
-    private static Control BuildAlertRow(WorkJournalAlert alert)
+    /// <summary>단일 레이블 항목은 별도 Panel로 감쌀 필요가 없다 — AutoSize Panel에 수동으로
+    /// Height까지 다시 지정하는 이중 관리가 예전 행간 오정렬의 원인이었으므로, 이런 항목은
+    /// FlowLayoutPanel에 레이블을 직접 추가해 레이아웃 엔진이 크기를 전담하게 한다.</summary>
+    private Control BuildAlertRow(WorkJournalAlert alert)
     {
-        var row = new Panel { Width = 268, AutoSize = true, Margin = new Padding(4, 0, 0, 2) };
         var badge = string.IsNullOrWhiteSpace(alert.Badge) ? "" : $"[{alert.Badge}] ";
         var hasLink = !string.IsNullOrWhiteSpace(alert.Link);
 
@@ -296,49 +311,40 @@ public sealed class WorkJournalForm : Form
             Text = (hasLink ? "▶ " : "• ") + badge + alert.Title,
             ForeColor = hasLink ? ExpandableColor : Color.FromArgb(60, 45, 10),
             Cursor = hasLink ? Cursors.Hand : Cursors.Default,
+            Margin = new Padding(4, 0, 0, 4),
         };
 
         if (hasLink)
         {
-            label.Click += (_, _) => OpenLink(alert.Link!);
+            label.Click += (_, _) => LinkClicked?.Invoke(this, alert.Link!);
         }
 
-        row.Controls.Add(label);
-        row.Height = label.PreferredHeight;
-        return row;
+        return label;
     }
 
-    private static void OpenLink(string relativeLink)
-    {
-        try
-        {
-            var url = relativeLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                ? relativeLink
-                : "https://future-class.kr" + relativeLink;
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        catch
-        {
-            // 브라우저를 열지 못해도 업무 일지 자체는 계속 동작해야 한다.
-        }
-    }
-
-    private static Control BuildItemRow(WorkJournalItem item)
+    private Control BuildItemRow(WorkJournalItem item)
     {
         var hasDescription = item.Description is not null;
 
-        var row = new Panel { Width = 268, AutoSize = true, Margin = new Padding(4, 0, 0, 2) };
+        // AutoSize=true인 Panel에 Height까지 수동으로 다시 지정하면(예전 코드) 두 크기
+        // 산정 방식이 충돌해 행간이 어긋나 보였다 — 지금은 AutoSize를 끄고 Height만 직접
+        // 관리한다(펼침/접힘 토글도 그대로 이 값만 갱신하면 된다).
+        var row = new Panel { Width = 268, AutoSize = false, Margin = new Padding(4, 0, 0, 4) };
 
         var timePrefix = item.Time is { } t ? t.ToString(@"hh\:mm") + "  " : "";
 
         // 클릭하면 설명이 펼쳐지는 항목은 화살표(▶/▼)로 눈에 띄게 표시하고, 색도 다르게 준다.
-        // 설명이 없는 항목은 기존처럼 수수한 점(•)만 붙는다.
+        // 설명이 없는 항목은 기존처럼 수수한 점(•)만 붙는다. icon이 지정된 항목(개인일정 등)은
+        // 그 아이콘과 지정된 색을 그대로 쓴다.
+        var prefix = item.Icon is { } icon ? icon + " " : (hasDescription ? "▶ " : "• ");
+        var titleColor = item.AccentColor ?? (hasDescription ? ExpandableColor : Color.FromArgb(60, 45, 10));
+
         var titleLabel = new Label
         {
             AutoSize = true,
             MaximumSize = new Size(260, 0),
-            Text = timePrefix + (hasDescription ? "▶ " : "• ") + item.Title,
-            ForeColor = hasDescription ? ExpandableColor : Color.FromArgb(60, 45, 10),
+            Text = timePrefix + prefix + item.Title,
+            ForeColor = titleColor,
             Font = hasDescription ? UiTheme.BoldFont : UiTheme.BaseFont,
             Cursor = hasDescription ? Cursors.Hand : Cursors.Default,
         };

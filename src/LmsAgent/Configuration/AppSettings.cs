@@ -169,6 +169,17 @@ public sealed class AppSettings
     /// 점심시간을 먼저 넣어줍니다. 쉬는 시간은 이 목록의 빈 구간으로 계산합니다.</summary>
     public List<PeriodSetting> Periods { get; set; } = new();
 
+    // ── 개인일정 (로컬 전용 — 서버/DB에 저장되지 않습니다) ──────
+    /// <summary>개인일정 표시 색상(예: "#7C5CFF"). 업무 일지에서 학사 일정과 구분하는 데 씁니다.</summary>
+    public string PersonalScheduleColor { get; set; } = "#7C5CFF";
+
+    /// <summary>개인일정 항목 앞에 붙는 아이콘(이모지). 학사 일정과 한눈에 구분하기 위한 표시입니다.</summary>
+    public string PersonalScheduleIcon { get; set; } = "📍";
+
+    /// <summary>개인일정을 저장할 폴더. 비워두면 %AppData%\LmsAgent\ 를 사용합니다.
+    /// 이 값을 바꿔도 기존 폴더의 파일이 자동으로 옮겨지지는 않습니다.</summary>
+    public string? PersonalScheduleStorageFolder { get; set; }
+
     // ── 라이센스 ──────────────────────────────────────────────
     /// <summary>학교 정보(auth_key)와 대조할 인증키. 값이 다르면 프로그램이 3분 뒤 자동 종료됩니다.</summary>
     public string? LicenseKey { get; set; }

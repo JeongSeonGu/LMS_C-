@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
 using System.Threading.Tasks;
 using LmsAgent.Configuration;
 using LmsAgent.Forms;
@@ -19,15 +21,18 @@ public sealed class WorkJournalService : IDisposable
     private readonly WorkSupportApiClient _api;
     private readonly SessionManager _session;
     private readonly AppSettings _settings;
+    private readonly PersonalScheduleStore _personalSchedules;
     private readonly Timer _timer;
     private readonly StickyNoteService _stickyNotes = new();
     private WorkJournalForm? _form;
 
-    public WorkJournalService(WorkSupportApiClient api, SessionManager session, AppSettings settings)
+    public WorkJournalService(
+        WorkSupportApiClient api, SessionManager session, AppSettings settings, PersonalScheduleStore personalSchedules)
     {
         _api = api;
         _session = session;
         _settings = settings;
+        _personalSchedules = personalSchedules;
         _timer = new Timer { Interval = (int)TimeSpan.FromMinutes(15).TotalMilliseconds };
         _timer.Tick += async (_, _) => await RefreshAsync();
         // 로그인/로그아웃(SessionManager.Clear) 시 즉시 로그인 전 안내 ↔ 실제 내용으로 전환한다.
@@ -52,6 +57,7 @@ public sealed class WorkJournalService : IDisposable
         {
             _form = new WorkJournalForm();
             _form.MemoButtonClicked += (_, _) => _stickyNotes.ShowAll();
+            _form.LinkClicked += async (_, link) => await OpenLinkWithSsoAsync(link);
         }
 
         _form.PositionTopLeft(DisplayHelper.ResolveScreen(_settings.TaskJournalMonitorIndex));
@@ -176,8 +182,71 @@ public sealed class WorkJournalService : IDisposable
             return;
         }
 
+        // 개인일정은 서버 조회와 무관한 로컬 파일 읽기이므로 실패해도 나머지 항목에 영향이
+        // 없도록 따로 감싼다. 학사 일정과 구분되도록 지정된 아이콘·색으로 표시한다.
+        try
+        {
+            var accentColor = ColorHelper.ParseHexOrDefault(_settings.PersonalScheduleColor, Color.MediumPurple);
+            foreach (var personal in _personalSchedules.Load())
+            {
+                if (personal.Date < rangeStart || personal.Date > rangeEnd)
+                {
+                    continue;
+                }
+
+                items.Add(new WorkJournalItem(
+                    personal.Date, personal.Title, personal.Note, personal.Time,
+                    _settings.PersonalScheduleIcon, accentColor));
+            }
+        }
+        catch
+        {
+            // 개인일정 로딩 실패도 조용히 건너뛴다.
+        }
+
         var alerts = await BuildAlertsAsync().ConfigureAwait(true);
         _form.SetContent(alerts, items);
+    }
+
+    /// <summary>
+    /// C#에서 이미 로그인되어 있으면 SSO 1회용 티켓을 발급받아, 클릭한 상세 주소로 바로
+    /// 이동하도록 next 파라미터를 붙여 연다(SSO 자동 로그인 적용 안내.md §5). 서버가 아직
+    /// sso_login.php에서 next를 처리하지 않는다면 대시보드로만 이동하지만, 최소한 로그인
+    /// 화면이 뜨는 것은 막을 수 있다. 로그인 전이거나 티켓 발급이 실패하면 평소처럼 연다.
+    /// </summary>
+    private async Task OpenLinkWithSsoAsync(string relativeLink)
+    {
+        var absoluteUrl = relativeLink.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? relativeLink
+            : "https://future-class.kr" + relativeLink;
+
+        if (_session.IsLoggedIn)
+        {
+            try
+            {
+                var ticket = await _api.GetSsoTicketAsync().ConfigureAwait(true);
+                if (ticket.Ok && !string.IsNullOrWhiteSpace(ticket.Data?.LoginUrl))
+                {
+                    var separator = ticket.Data!.LoginUrl.Contains('?') ? "&" : "?";
+                    var loginUrl = $"{ticket.Data.LoginUrl}{separator}next={Uri.EscapeDataString(absoluteUrl)}";
+                    Process.Start(new ProcessStartInfo(loginUrl) { UseShellExecute = true });
+                    return;
+                }
+            }
+            catch
+            {
+                // 티켓 발급 실패(세션 만료 등)는 치명적이지 않다 — 아래에서 평소처럼 연다.
+            }
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(absoluteUrl) { UseShellExecute = true });
+        }
+        catch
+        {
+            // 브라우저를 열지 못해도 업무 일지 자체는 계속 동작해야 한다.
+        }
     }
 
     /// <summary>
