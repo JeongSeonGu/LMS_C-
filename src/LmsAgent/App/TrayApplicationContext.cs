@@ -398,6 +398,26 @@ public sealed class TrayApplicationContext : ApplicationContext
     /// </summary>
     private void OnDomainEventReceived(DomainEventData ev)
     {
+        // 다른 곳(웹이든 다른 PC의 C#이든)에서 로그아웃하면 서버가 내 개인 Room으로
+        // 이 이벤트를 발행한다(웹소켓_데이터통신규칙.md §7-B). 서버가 세션을 강제로 끊는
+        // 것은 아니므로, 이걸 받은 클라이언트가 스스로 로그아웃 상태로 맞추는 것뿐이다.
+        // 별도 구독 없이도 로그인 시 자동으로 들어가 있는 개인 Room을 통해 온다.
+        if (ev.Type == "work.session.revoked")
+        {
+            RunOnUiThread(() =>
+            {
+                if (!_session.IsLoggedIn)
+                {
+                    return;
+                }
+
+                _session.Clear();
+                _trayIcon.ShowBalloonTip(6000, "로그아웃됨",
+                    "다른 곳에서 로그아웃되어 연결이 해제되었습니다.", ToolTipIcon.Info);
+            });
+            return;
+        }
+
         RunOnUiThread(() => _myDutyChangeService.HandleDomainEvent(ev));
     }
 
