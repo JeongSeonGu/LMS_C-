@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
 using LmsAgent.Networking;
@@ -7,22 +8,29 @@ using LmsAgent.Services;
 namespace LmsAgent.Forms.OptionsPages;
 
 /// <summary>
-/// 대분류 "라이센스" — 학교에 발급된 인증키를 입력합니다. 로그인 직후(및 이 창을 열 때마다)
-/// 서버의 학교 정보(auth_key)와 대조해서 값이 다르면 경고와 함께 3분 뒤 프로그램이 자동
-/// 종료됩니다(백그라운드 감시 자체는 LicenseGuardService가 담당). 이 페이지는 그 결과를
+/// 대분류 "라이센스" — 학교명과 학교에 발급된 인증키를 입력합니다. 로그인 직후(및 이 창을
+/// 열 때마다) 서버의 학교 정보(auth_key)와 대조해서 값이 다르면 경고와 함께 3분 뒤 프로그램이
+/// 자동 종료됩니다(백그라운드 감시 자체는 LicenseGuardService가 담당). 이 페이지는 그 결과를
 /// 트레이 메뉴까지 가지 않아도 바로 확인할 수 있도록 자체적으로도 한 번 더 검사해 보여줍니다.
 /// </summary>
 public sealed class LicenseOptionsPage : UserControl, IOptionsPage
 {
     private readonly WorkSupportApiClient _api;
 
-    private readonly TextBox _licenseKeyBox = new() { Left = 130, Top = 20, Width = 220 };
+    private readonly TextBox _schoolNameBox = new() { Left = 130, Top = 20, Width = 260 };
 
-    private readonly Button _checkButton = new() { Left = 358, Top = 18, Width = 90, Text = "지금 확인" };
+    private readonly TextBox _licenseKeyBox = new() { Left = 130, Top = 82, Width = 220 };
+
+    private readonly Button _checkButton = new() { Left = 358, Top = 80, Width = 90, Text = "지금 확인" };
 
     private readonly Label _statusLabel = new()
     {
-        Left = 20, Top = 50, Width = 420, Height = 20,
+        Left = 20, Top = 112, Width = 420, Height = 20,
+    };
+
+    private readonly Label _versionLabel = new()
+    {
+        Left = 20, Top = 210, Width = 420, Height = 20,
     };
 
     public string CategoryName => "라이센스";
@@ -39,7 +47,18 @@ public sealed class LicenseOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHeaderLabel(header);
         Controls.Add(header);
 
-        Controls.Add(new Label { Left = 20, Top = 23, Width = 100, Text = "인증키" });
+        Controls.Add(new Label { Left = 20, Top = 23, Width = 100, Text = "학교명" });
+        Controls.Add(_schoolNameBox);
+
+        var schoolNameHint = new Label
+        {
+            Left = 20, Top = 52, Width = 420, Height = 24,
+            Text = "화면 표시와 인쇄물 제목 등에 사용됩니다. 로그인하면 서버에 등록된 학교명으로 자동 채워집니다.",
+        };
+        UiTheme.StyleHintLabel(schoolNameHint);
+        Controls.Add(schoolNameHint);
+
+        Controls.Add(new Label { Left = 20, Top = 85, Width = 100, Text = "인증키" });
         Controls.Add(_licenseKeyBox);
         Controls.Add(_checkButton);
         Controls.Add(_statusLabel);
@@ -48,7 +67,7 @@ public sealed class LicenseOptionsPage : UserControl, IOptionsPage
 
         var hint = new Label
         {
-            Left = 20, Top = 78, Width = 420, Height = 60,
+            Left = 20, Top = 140, Width = 420, Height = 60,
             Text = "학교에 발급된 인증키를 입력하세요. 로그인 직후와 환경설정 저장 시 서버에 등록된\n" +
                    "학교 인증키와 자동으로 대조하며, 값이 다르면 경고 후 3분 뒤 프로그램이 자동으로\n" +
                    "종료됩니다. \"지금 확인\"으로 저장하지 않고도 바로 검증해 볼 수 있습니다.",
@@ -56,17 +75,24 @@ public sealed class LicenseOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
 
+        var version = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
+        _versionLabel.Text = $"프로그램 버전: {version}";
+        UiTheme.StyleHintLabel(_versionLabel);
+        Controls.Add(_versionLabel);
+
         _checkButton.Click += async (_, _) => await RunCheckAsync(_licenseKeyBox.Text);
     }
 
     public void LoadFrom(AppSettings settings)
     {
+        _schoolNameBox.Text = settings.SchoolName;
         _licenseKeyBox.Text = settings.LicenseKey ?? "";
         _ = RunCheckAsync(_licenseKeyBox.Text);
     }
 
     public void SaveTo(AppSettings settings)
     {
+        settings.SchoolName = _schoolNameBox.Text.Trim();
         var key = _licenseKeyBox.Text.Trim();
         settings.LicenseKey = key.Length > 0 ? key : null;
     }

@@ -183,6 +183,24 @@ public sealed class WorkJournalForm : Form
         Opacity = Math.Clamp(percent, 20, 100) / 100.0;
     }
 
+    /// <summary>아직 로그인하지 않은 상태임을 사용자가 직관적으로 알 수 있도록 보여줍니다.
+    /// 담당업무 필터링이 로그인 계정 기준이라 로그인 전에는 조회 자체를 하지 않으므로,
+    /// 아무 안내 없이 빈 채로 두면 "고장났다"고 오해할 수 있다.</summary>
+    public void SetLoggedOut()
+    {
+        _content.SuspendLayout();
+        _content.Controls.Clear();
+        _content.Controls.Add(new Label
+        {
+            AutoSize = true,
+            MaximumSize = new Size(260, 0),
+            Text = "🔒 아직 로그인 전입니다.\n트레이 메뉴 > 사용자 정보 > 로그인 후 이용하세요.",
+            ForeColor = Color.FromArgb(120, 95, 40),
+            Margin = new Padding(4, 8, 0, 0),
+        });
+        _content.ResumeLayout();
+    }
+
     /// <param name="alerts">요청사항·알림·법정연수 등 학사 달력 밖의 "확인 필요" 항목(분류별로 묶어 상단에 표시).</param>
     /// <param name="items">학사일정·할일 등 날짜별 항목(기존 방식대로 날짜별로 묶어 표시).</param>
     public void SetContent(IReadOnlyList<WorkJournalAlert> alerts, IReadOnlyList<WorkJournalItem> items)

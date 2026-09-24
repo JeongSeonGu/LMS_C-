@@ -30,6 +30,8 @@ public sealed class WorkJournalService : IDisposable
         _settings = settings;
         _timer = new Timer { Interval = (int)TimeSpan.FromMinutes(15).TotalMilliseconds };
         _timer.Tick += async (_, _) => await RefreshAsync();
+        // 로그인/로그아웃(SessionManager.Clear) 시 즉시 로그인 전 안내 ↔ 실제 내용으로 전환한다.
+        _session.SessionChanged += RefreshNow;
     }
 
     /// <summary>환경설정이 바뀔 때마다(또는 로그인 직후) 호출해서 오버레이 상태를 다시 맞춥니다.
@@ -89,8 +91,14 @@ public sealed class WorkJournalService : IDisposable
 
     private async Task RefreshAsync()
     {
-        if (_form is null || _session.Profile is null)
+        if (_form is null)
         {
+            return;
+        }
+
+        if (_session.Profile is null)
+        {
+            _form.SetLoggedOut();
             return;
         }
 
@@ -256,6 +264,7 @@ public sealed class WorkJournalService : IDisposable
 
     public void Dispose()
     {
+        _session.SessionChanged -= RefreshNow;
         _timer.Dispose();
         _form?.Dispose();
         _stickyNotes.Dispose();

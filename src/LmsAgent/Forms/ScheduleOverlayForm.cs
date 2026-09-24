@@ -55,7 +55,14 @@ public sealed class ScheduleOverlayForm : Form
 
         if (unit == ScheduleOutputUnit.Month)
         {
-            Bounds = screen.Bounds;
+            // screen.Bounds는 작업 표시줄 영역까지 포함해 화면 전체를 덮어버린다. WorkingArea를
+            // 기준으로 하고, 최대 1024×768로 제한해 화면 가운데에 표시한다.
+            var area = screen.WorkingArea;
+            var width = Math.Min(1024, area.Width);
+            var height = Math.Min(768, area.Height);
+            var left = area.Left + (area.Width - width) / 2;
+            var top = area.Top + (area.Height - height) / 2;
+            Bounds = new Rectangle(left, top, width, height);
         }
         else
         {

@@ -127,6 +127,16 @@ public sealed class WorkSupportApiClient : IDisposable
     }
 
     /// <summary>
+    /// SSO(자동 로그인) 1회용 티켓 발급 — 이 HttpClient가 이미 로그인(WSSESSID 보유) 상태여야만
+    /// 성공한다. 응답의 loginUrl을 그대로 시스템 브라우저로 열면(Process.Start) 재로그인 없이
+    /// 대시보드로 들어간다(SSO 자동 로그인 적용 안내.md §5). 세션 만료 시 HTTP 401 + ok:false.
+    /// </summary>
+    public async Task<ApiEnvelope<SsoTicketResult>> GetSsoTicketAsync()
+    {
+        return await GetJsonAsync<SsoTicketResult>("php/auth/sso_ticket.php").ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 실시간 연동(웹소켓) 접속용 1회용 티켓을 발급받는다(60초 유효). 기기 토큰을 소켓에 직접
     /// 보내지 않고, 접속할 때마다 이 티켓을 새로 받아야 한다(웹소켓_데이터통신규칙.md §3 참고).
     /// </summary>
@@ -679,6 +689,15 @@ public sealed class TodoWriteResult
 {
     [JsonPropertyName("id")] public int Id { get; set; }
     [JsonPropertyName("uuid")] public string? Uuid { get; set; }
+}
+
+/// <summary>php/auth/sso_ticket.php 응답의 data 필드. token은 40초짜리 1회용이라 저장하지
+/// 않고, 받은 즉시 loginUrl을 여는 용도로만 쓴다(SSO 자동 로그인 적용 안내.md §5-3).</summary>
+public sealed class SsoTicketResult
+{
+    [JsonPropertyName("token")] public string Token { get; set; } = "";
+    [JsonPropertyName("expiresIn")] public int ExpiresIn { get; set; }
+    [JsonPropertyName("loginUrl")] public string LoginUrl { get; set; } = "";
 }
 
 /// <summary>php/auth/ws_me.php 응답의 data 필드.</summary>

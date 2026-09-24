@@ -147,6 +147,17 @@ public sealed class TrayApplicationContext : ApplicationContext
         };
         _trayIcon.DoubleClick += (_, _) => OnUserInfoClicked(null, EventArgs.Empty);
 
+        // 오른쪽 클릭은 기존 ContextMenuStrip(NotifyIcon이 자동으로 보여줌)을 그대로 쓰고,
+        // 왼쪽 클릭은 같은 메뉴 항목들을 flat(WPF 스타일) 창의 버튼 목록으로 다시 보여준다.
+        _trayIcon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                using var panel = new TrayControlPanelForm(menu);
+                panel.ShowDialog();
+            }
+        };
+
         _wsClient.Start();
         _dutyService.Start();
         _autoPrintService.Start();
@@ -368,7 +379,12 @@ public sealed class TrayApplicationContext : ApplicationContext
         RunOnUiThread(() => _trayIcon.ShowBalloonTip(6000, "담당업무 변경 알림", message, ToolTipIcon.Info));
     }
 
-    private void OnWorkSupportPageClicked(object? sender, EventArgs e)
+    /// <summary>
+    /// C#에서 이미 로그인(WSSESSID 보유)된 상태면 SSO 1회용 티켓을 발급받아 그 주소로 바로
+    /// 열어서(SSO 자동 로그인 적용 안내.md §5) 브라우저가 다시 로그인하지 않도록 한다.
+    /// 티켓 발급이 실패하면(세션 만료 등) 평소처럼 로그인 화면 주소를 연다.
+    /// </summary>
+    private async void OnWorkSupportPageClicked(object? sender, EventArgs e)
     {
         var url = _settings.WorkSupportPageUrl;
         if (string.IsNullOrWhiteSpace(url))
@@ -376,6 +392,24 @@ public sealed class TrayApplicationContext : ApplicationContext
             MessageBox.Show("교무업무 페이지 주소가 설정되어 있지 않습니다. 환경설정 > 네트워크에서 설정해주세요.",
                 "교무업무 페이지", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
+        }
+
+        if (_session.IsLoggedIn)
+        {
+            try
+            {
+                var ticket = await _api.GetSsoTicketAsync();
+                if (ticket.Ok && !string.IsNullOrWhiteSpace(ticket.Data?.LoginUrl))
+                {
+                    System.Diagnostics.Process.Start(
+                        new System.Diagnostics.ProcessStartInfo(ticket.Data!.LoginUrl) { UseShellExecute = true });
+                    return;
+                }
+            }
+            catch
+            {
+                // 티켓 발급 실패(세션 만료 등)는 치명적이지 않다 — 아래에서 평소 로그인 화면을 연다.
+            }
         }
 
         try
