@@ -121,10 +121,10 @@ public sealed class PersonalScheduleForm : Form
     private void LoadFromStore()
     {
         _items = _store.Load();
-        Refresh();
+        RefreshGrid();
     }
 
-    private void Refresh()
+    private void RefreshGrid()
     {
         var rows = _items
             .OrderBy(i => i.Date)
@@ -153,7 +153,7 @@ public sealed class PersonalScheduleForm : Form
                 "개인일정 등록", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
-        Refresh();
+        RefreshGrid();
     }
 
     private void OnAddClicked(object? sender, EventArgs e)
