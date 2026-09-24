@@ -42,7 +42,11 @@ public enum UpdateCheckResult
 /// </summary>
 public sealed class UpdateService
 {
+    // manifest.json은 몇 줄짜리 텍스트라 15초면 충분하지만, 자체 포함(self-contained) 게시라
+    // zip 하나가 100MB를 넘길 수 있어 같은 시간 제한을 쓰면 느린 회선에서 다운로드 도중
+    // 타임아웃이 나 버린다. 그래서 다운로드 전용으로 훨씬 긴 타임아웃의 별도 클라이언트를 둔다.
     private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static readonly HttpClient DownloadHttpClient = new() { Timeout = TimeSpan.FromMinutes(10) };
 
     private readonly AppSettings _settings;
 
@@ -169,7 +173,11 @@ public sealed class UpdateService
 
         try
         {
-            using var response = await HttpClient.GetAsync(manifest.DownloadUrl).ConfigureAwait(false);
+            // ResponseHeadersRead: 응답 헤더만 오면 바로 반환하고, 본문은 아래에서 파일로
+            // 직접 스트리밍한다 — 146MB 전체를 메모리에 먼저 버퍼링하지 않는다.
+            using var response = await DownloadHttpClient
+                .GetAsync(manifest.DownloadUrl, HttpCompletionOption.ResponseHeadersRead)
+                .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 RealtimeLog.Write(
@@ -177,9 +185,10 @@ public sealed class UpdateService
                 return (null, UpdateCheckResult.DownloadFailed);
             }
 
+            await using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
             await using (var fileStream = File.Create(zipPath))
             {
-                await response.Content.CopyToAsync(fileStream).ConfigureAwait(false);
+                await responseStream.CopyToAsync(fileStream).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
