@@ -119,7 +119,11 @@ public sealed class WorkJournalForm : Form
         ForeColor = Color.FromArgb(90, 60, 10),
     };
 
-    private readonly FlowLayoutPanel _content = new()
+    // 실시간 이벤트를 받을 때마다(요청사항/알림/법정연수/학사일정 갱신 등) SetContent가
+    // Controls.Clear() 후 여러 줄을 한꺼번에 다시 추가하는데, 일반 FlowLayoutPanel은
+    // 더블 버퍼링이 꺼져 있어 이 과정이 화면에 그대로 비쳐(이전 내용과 새 내용이 한
+    // 프레임 안에서 겹쳐 그려지는 "찢어짐") 항목들이 뒤엉켜 보이는 경우가 있었다.
+    private readonly DoubleBufferedFlowLayoutPanel _content = new()
     {
         Dock = DockStyle.Fill,
         AutoScroll = true,
@@ -128,6 +132,16 @@ public sealed class WorkJournalForm : Form
         BackColor = NoteColor,
         Padding = new Padding(8, 6, 8, 8),
     };
+
+    /// <summary>더블 버퍼링만 켠 FlowLayoutPanel. <see cref="Control.DoubleBuffered"/>가
+    /// protected라 직접 켤 수 없어 이렇게 한 줄짜리 서브클래스로 감쌌다.</summary>
+    private sealed class DoubleBufferedFlowLayoutPanel : FlowLayoutPanel
+    {
+        public DoubleBufferedFlowLayoutPanel()
+        {
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
+        }
+    }
 
     public WorkJournalForm()
     {

@@ -24,6 +24,8 @@ public sealed class WorkJournalService : IDisposable
     private readonly Timer _timer;
     private readonly StickyNoteService _stickyNotes = new();
     private WorkJournalForm? _form;
+    private bool _refreshing;
+    private bool _refreshPending;
 
     public WorkJournalService(
         WorkSupportApiClient api, SessionManager session, AppSettings settings, PersonalScheduleStore personalSchedules)
@@ -94,7 +96,39 @@ public sealed class WorkJournalService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 15분 타이머·실시간 이벤트(요청사항/알림/법정연수/학사일정)·개인일정 등록 등 여러
+    /// 곳에서 겹쳐서 호출될 수 있다. 두 호출이 동시에 진행되면(각각 API 응답을 기다리는
+    /// 동안 서로 끼어들 수 있음) 나중 것이 먼저 것보다 먼저 <c>_form.SetContent</c>를
+    /// 부르는 경우 등 화면이 잠깐 뒤섞여 보일 수 있어, 진행 중이면 새 요청은 지금 실행하지
+    /// 않고 "끝나면 한 번 더" 표시만 남겨 순차적으로만 실행되게 한다.
+    /// </summary>
     private async Task RefreshAsync()
+    {
+        if (_refreshing)
+        {
+            _refreshPending = true;
+            return;
+        }
+
+        _refreshing = true;
+        try
+        {
+            await RefreshCoreAsync();
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+
+        if (_refreshPending)
+        {
+            _refreshPending = false;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task RefreshCoreAsync()
     {
         if (_form is null)
         {

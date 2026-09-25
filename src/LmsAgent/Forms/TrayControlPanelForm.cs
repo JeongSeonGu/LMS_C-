@@ -109,21 +109,36 @@ public sealed class TrayControlPanelForm : Form
 
         var closeButton = new Button
         {
-            Dock = DockStyle.Right,
             Width = 44,
+            Height = _header.Height,
             Text = "×",
             FlatStyle = FlatStyle.Flat,
             ForeColor = Color.White,
             Font = new Font(UiTheme.BaseFont.FontFamily, 13F, FontStyle.Bold),
+            Margin = new Padding(0),
         };
         closeButton.FlatAppearance.BorderSize = 0;
         closeButton.FlatAppearance.MouseOverBackColor = UiTheme.SkyDark;
         closeButton.Click += (_, _) => Close();
 
-        _header.Controls.Add(titleLabel);
-        // Dock=Right는 먼저 추가한 컨트롤이 진짜 오른쪽 끝을 차지하므로, closeButton을
-        // 가장 먼저 추가해 항상 맨 끝에 두고, 로그아웃 버튼·ID/이름 라벨을 그 왼쪽에 순서대로 둔다.
-        _header.Controls.Add(closeButton);
+        // ⚠ Dock=Right인 컨트롤을 여러 개 만들면 "먼저 추가한 것이 진짜 가장자리를
+        // 차지한다"는 이 저장소의 다른 규칙(예: WorkJournalForm 헤더의 닫기/쪽지 버튼
+        // 2개)과 달리, 컨트롤이 3개 이상으로 늘어나면 그 순서가 어느 쪽으로 뒤집힐지
+        // 신뢰하기 어렵다는 걸 실제로 겪었다(로그인 정보·로그아웃 버튼을 추가했더니
+        // ×가 오히려 맨 왼쪽으로 밀려났다). 그래서 오른쪽에 들어갈 항목 전체를 FlowLayoutPanel
+        // 하나로 묶어 Dock=Right는 이 컨테이너 하나뿐이게 하고(모호할 게 없다), 그 안에서는
+        // FlowDirection.RightToLeft로 "먼저 추가한 항목이 진짜 오른쪽 끝"이 되도록 명시적으로
+        // 제어한다 — ×를 항상 제일 먼저 추가하므로 무슨 일이 있어도 가장 오른쪽에 남는다.
+        var rightCluster = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right,
+            FlowDirection = FlowDirection.RightToLeft,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = UiTheme.Sky,
+        };
+        rightCluster.Controls.Add(closeButton);
 
         // 로그인 중일 때만 ID/이름과 로그아웃 버튼을 보여준다(스냅샷 — 이 창이 열려 있는
         // 동안 로그인 상태가 바뀌어도 다시 그리지 않는다, 하단 상태 표시줄과 같은 규칙).
@@ -131,35 +146,47 @@ public sealed class TrayControlPanelForm : Form
         {
             var logoutButton = new Button
             {
-                Dock = DockStyle.Right,
                 Width = 84,
+                Height = _header.Height,
                 Text = "로그아웃",
                 FlatStyle = FlatStyle.Flat,
                 ForeColor = Color.White,
-                Font = UiTheme.BaseFont,
+                BackColor = UiTheme.OrangeDark,
+                Font = UiTheme.BoldFont,
                 Cursor = Cursors.Hand,
+                Margin = new Padding(0),
             };
+            // 배경이 헤더와 똑같은 하늘색이면 버튼인지조차 알아보기 어려웠다 — 오렌지
+            // 채움색을 줘서 눈에 띄는 실제 버튼처럼 보이게 한다(이 앱의 "주요 동작" 강조색).
             logoutButton.FlatAppearance.BorderSize = 0;
-            logoutButton.FlatAppearance.MouseOverBackColor = UiTheme.SkyDark;
+            logoutButton.FlatAppearance.MouseOverBackColor = UiTheme.Orange;
             logoutButton.Click += (_, _) =>
             {
                 _onLogout();
                 Close();
             };
-            _header.Controls.Add(logoutButton);
+            rightCluster.Controls.Add(logoutButton);
 
+            // ⚠ AutoSize=true인 채로 Height까지 지정하면 Text를 설정하는 순간 AutoSize가
+            // Height를 다시 텍스트 한 줄 높이(~20px)로 덮어써서, FlowLayoutPanel 안에서
+            // 버튼들(44px)과 나란히 있을 때 위쪽으로 붕 떠 보인다 — AutoSize를 끄고
+            // Width/Height를 직접 고정한 뒤 TextAlign으로 세로 중앙 정렬한다.
             var userInfoLabel = new Label
             {
-                Dock = DockStyle.Right,
+                AutoSize = false,
                 Width = 220,
+                Height = _header.Height,
                 Text = $"ID: {profile.LoginId}   이름: {profile.Name}",
                 ForeColor = Color.White,
                 Font = UiTheme.BaseFont,
-                TextAlign = ContentAlignment.MiddleRight,
-                Padding = new Padding(0, 0, 12, 0),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(0, 0, 16, 0),
             };
-            _header.Controls.Add(userInfoLabel);
+            rightCluster.Controls.Add(userInfoLabel);
         }
+
+        _header.Controls.Add(titleLabel);
+        _header.Controls.Add(rightCluster);
 
         // 테두리 없는 창이라 제목표시줄을 직접 드래그로 옮길 수 있게 한다.
         void StartDrag(object? _, MouseEventArgs e) { _dragging = true; _dragStart = e.Location; }
