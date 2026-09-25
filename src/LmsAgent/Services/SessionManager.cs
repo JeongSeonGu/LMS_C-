@@ -46,6 +46,16 @@ public sealed class SessionManager
     /// <summary>
     /// 로그인 직후 호출: 담당업무 전체 목록과, 본인이 여러 업무를 맡고 있을 경우를 대비해
     /// school_teacher_departments(N:M) 기준의 정확한 담당업무 집합을 다시 채웁니다.
+    ///
+    /// ⚠ 반드시 ConfigureAwait(false)를 쓰지 않아야 한다(원래는 썼었다) — 이 메서드가 끝에서
+    /// 부르는 SessionChanged는 UI를 직접 건드리는 구독자(WorkJournalService의 쪽지 자동
+    /// 복원 등)를 갖고 있는데, ConfigureAwait(false)로 스레드풀 스레드에서 계속 실행되다가
+    /// 마지막에 SessionChanged를 호출하면 그 구독자들도 스레드풀 스레드에서 실행돼
+    /// "크로스 스레드 작업이 잘못되었습니다" 예외가 난다(로그인 화면에서 실제로 겪은 버그 —
+    /// LoginForm.OnLoginClicked가 이 메서드를 await하고 있어서 그 예외가 로그인 오류로
+    /// 그대로 올라와 보였다). 이 메서드는 항상 UI 스레드(로그인 화면)에서 호출되므로,
+    /// ConfigureAwait 기본값(호출한 스레드로 복귀)을 그대로 써야 SessionChanged도 UI
+    /// 스레드에서 안전하게 실행된다.
     /// </summary>
     public async Task RefreshDepartmentContextAsync(WorkSupportApiClient api)
     {
@@ -54,7 +64,7 @@ public sealed class SessionManager
             return;
         }
 
-        var deptResult = await api.GetDepartmentsAsync().ConfigureAwait(false);
+        var deptResult = await api.GetDepartmentsAsync();
         if (deptResult.Ok && deptResult.Data is not null)
         {
             Departments = deptResult.Data;
@@ -62,7 +72,7 @@ public sealed class SessionManager
 
         if (Profile.TeacherId is int teacherId)
         {
-            var teacherResult = await api.GetTeacherAsync(teacherId).ConfigureAwait(false);
+            var teacherResult = await api.GetTeacherAsync(teacherId);
             if (teacherResult.Ok && teacherResult.Data is not null)
             {
                 MyTeacher = teacherResult.Data;
@@ -73,7 +83,7 @@ public sealed class SessionManager
         // teachers.php는 teacher_id가 있는 계정만 조회되므로, 행정실 등 교사가 아닌 계정은
         // dept_id 하나뿐인 것으로 잘못 판단될 수 있다. dept_ids를 최우선으로 쓰고,
         // 값이 없을 때만 teachers.php → 대표 dept_id 순으로 대체한다.
-        var meResult = await api.GetMeAsync().ConfigureAwait(false);
+        var meResult = await api.GetMeAsync();
         if (meResult.Ok && meResult.Data?.DeptIds is { Count: > 0 } deptIds)
         {
             MyDeptIds = new HashSet<int>(deptIds);
