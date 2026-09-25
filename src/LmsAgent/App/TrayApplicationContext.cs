@@ -118,8 +118,20 @@ public sealed class TrayApplicationContext : ApplicationContext
         };
         menu.Items.Add(_licenseStatusItem);
 
+        // 순서는 좌클릭 시 뜨는 TrayControlPanelForm의 사이드바에도 그대로 반영된다
+        // (그 창은 이 menu.Items를 순서 그대로 훑어 사이드바 버튼을 만든다) — 사용자가
+        // 준 참고 이미지 순서: 교무업무 페이지 → 기본정보 → 학사 일정 → 사용자 정보 →
+        // 업데이트 확인 → 실시간 연동 로그 열기 → 환경설정 → 종료.
         menu.Items.Add(new ToolStripMenuItem("교무업무 페이지", null, OnWorkSupportPageClicked));
         menu.Items.Add(new ToolStripSeparator());
+
+        var basicInfoMenu = new ToolStripMenuItem("기본정보");
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("요청사항", null, OnRequestsClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("학교기본정보", null, OnSchoolInfoClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("공통계정", null, OnSharedAccountsClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("협의사항", null, OnMeetingsClicked));
+        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("길라잡이 조회", null, OnGuideDocsClicked));
+        menu.Items.Add(basicInfoMenu);
 
         var scheduleMenu = new ToolStripMenuItem("학사 일정");
         scheduleMenu.DropDownItems.Add(new ToolStripMenuItem("일정 등록...", null, OnScheduleRegisterClicked));
@@ -139,18 +151,10 @@ public sealed class TrayApplicationContext : ApplicationContext
         userMenu.DropDownItems.Add(new ToolStripMenuItem("개인일정 등록...", null, OnPersonalScheduleClicked));
         menu.Items.Add(userMenu);
 
-        var basicInfoMenu = new ToolStripMenuItem("기본정보");
-        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("요청사항", null, OnRequestsClicked));
-        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("학교기본정보", null, OnSchoolInfoClicked));
-        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("공통계정", null, OnSharedAccountsClicked));
-        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("협의사항", null, OnMeetingsClicked));
-        basicInfoMenu.DropDownItems.Add(new ToolStripMenuItem("길라잡이 조회", null, OnGuideDocsClicked));
-        menu.Items.Add(basicInfoMenu);
-
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("환경설정...", null, OnOptionsClicked));
         menu.Items.Add(new ToolStripMenuItem("업데이트 확인...", null, OnCheckUpdateClicked));
         menu.Items.Add(new ToolStripMenuItem("실시간 연동 로그 열기...", null, OnOpenRealtimeLogClicked));
+        menu.Items.Add(new ToolStripMenuItem("환경설정...", null, OnOptionsClicked));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("종료", null, OnExitClicked));
 
@@ -185,7 +189,7 @@ public sealed class TrayApplicationContext : ApplicationContext
                 return;
             }
 
-            _trayControlPanel = new TrayControlPanelForm(menu);
+            _trayControlPanel = new TrayControlPanelForm(menu, _session, OnLogoutRequested);
             _trayControlPanel.FormClosed += (_, _) => _trayControlPanel = null;
             _trayControlPanel.Show();
             _trayControlPanel.Activate();
@@ -475,6 +479,20 @@ public sealed class TrayApplicationContext : ApplicationContext
     {
         _pendingNoticeLink = null;
         RunOnUiThread(() => _trayIcon.ShowBalloonTip(6000, "담당업무 변경 알림", message, ToolTipIcon.Info));
+    }
+
+    /// <summary>트레이 왼쪽 클릭 창(<see cref="TrayControlPanelForm"/>) 헤더의 "로그아웃" 버튼.
+    /// 서버에도 로그아웃을 알려(php/auth/ws_logout.php) 다른 화면(웹, 다른 PC)에도
+    /// work.session.revoked로 전파되게 하고, 이 프로그램의 로컬 세션도 즉시 정리한다.</summary>
+    private async void OnLogoutRequested()
+    {
+        if (!_session.IsLoggedIn)
+        {
+            return;
+        }
+
+        await _api.LogoutAsync();
+        _session.Clear();
     }
 
     /// <summary>

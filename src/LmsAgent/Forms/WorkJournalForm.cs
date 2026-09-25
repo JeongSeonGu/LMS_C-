@@ -197,12 +197,13 @@ public sealed class WorkJournalForm : Form
     }
 
     /// <summary>환경설정 &gt; 업무의 출력 단위(일/주)에 맞춰 헤더에 날짜를 보여줍니다.
-    /// 일 단위: "업무 일지(2026.09.25)", 주 단위: "업무 일지(2026.09.21 ~ 2026.09.27)".</summary>
+    /// 일 단위: "업무 일지(2026.09.25)", 주 단위: "업무 일지(09.21 ~ 09.27)". 주 단위는
+    /// 헤더 폭이 좁아 연도까지 넣으면 전체 문구가 잘려 보이므로 연도를 뺀다.</summary>
     public void SetHeaderRange(DateTime rangeStart, DateTime rangeEnd)
     {
         var range = rangeStart == rangeEnd
             ? rangeStart.ToString("yyyy.MM.dd")
-            : $"{rangeStart:yyyy.MM.dd} ~ {rangeEnd:yyyy.MM.dd}";
+            : $"{rangeStart:MM.dd} ~ {rangeEnd:MM.dd}";
         _titleLabel.Text = $"📌 업무 일지({range})";
     }
 
@@ -312,7 +313,11 @@ public sealed class WorkJournalForm : Form
     /// 지금은 제목을 한 줄로, 배지가 있으면 그 아래 줄에 색이 있는 배지로 따로 보여준다.
     /// 중첩 FlowLayoutPanel(TopDown)에 맡기면 각 줄의 높이를 직접 계산할 필요가 없어
     /// AutoSize Panel에 수동으로 Height를 다시 지정하다 생기던 행간 오정렬도 원천적으로
-    /// 피할 수 있다.</summary>
+    /// 피할 수 있다.
+    ///
+    /// 제목을 클릭해도 바로 웹페이지로 이동하지 않는다 — ▶/▼로 내용(제목+배지)을 먼저
+    /// 펼쳐 보여주고, 펼친 내용 맨 아래의 "[세부 페이지 이동]" 링크를 따로 클릭해야
+    /// 실제로 브라우저가 열린다(클릭 한 번에 바로 페이지가 튀어나가 당황스럽다는 피드백 반영).</summary>
     private Control BuildAlertRow(WorkJournalAlert alert)
     {
         var hasLink = !string.IsNullOrWhiteSpace(alert.Link);
@@ -336,16 +341,33 @@ public sealed class WorkJournalForm : Form
             Margin = new Padding(0),
         };
 
-        if (hasLink)
-        {
-            titleLabel.Click += (_, _) => LinkClicked?.Invoke(this, alert.Link!);
-        }
-
         card.Controls.Add(titleLabel);
 
         if (!string.IsNullOrWhiteSpace(alert.Badge))
         {
             card.Controls.Add(BuildBadge(alert.Badge));
+        }
+
+        if (hasLink)
+        {
+            var goToPageLabel = new Label
+            {
+                AutoSize = true,
+                Text = "[세부 페이지 이동]",
+                ForeColor = UiTheme.SkyDark,
+                Font = new Font(UiTheme.BaseFont, FontStyle.Underline),
+                Cursor = Cursors.Hand,
+                Visible = false,
+                Margin = new Padding(16, 4, 0, 0),
+            };
+            goToPageLabel.Click += (_, _) => LinkClicked?.Invoke(this, alert.Link!);
+            card.Controls.Add(goToPageLabel);
+
+            titleLabel.Click += (_, _) =>
+            {
+                goToPageLabel.Visible = !goToPageLabel.Visible;
+                titleLabel.Text = (goToPageLabel.Visible ? "▼ " : "▶ ") + alert.Title;
+            };
         }
 
         return card;

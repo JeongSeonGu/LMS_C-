@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace LmsAgent.Services;
@@ -144,6 +145,65 @@ public static class UiTheme
         button.BackColor = Surface;
         button.ForeColor = TextPrimary;
         button.Cursor = Cursors.Hand;
+    }
+
+    /// <summary>
+    /// 트레이 왼쪽 클릭 창(<see cref="LmsAgent.Forms.TrayControlPanelForm"/>)의 카테고리별
+    /// 하위 항목을, 세로로 긴 목록 대신 모서리가 둥근 정사각형/직사각형 "타일" 버튼으로
+    /// 보여주기 위한 스타일입니다. Button.Region을 둥근 사각형으로 잘라 그리는 것만으로
+    /// 애니메이션 없이도 각지지 않은 "리퀴드" 느낌을 낼 수 있습니다 — 버튼 크기가 정해진
+    /// 뒤(Width/Height 설정 후)에 호출해야 하며, 이후 크기가 바뀌어도(드문 경우) Resize에서
+    /// 다시 잘라줍니다.
+    /// </summary>
+    public static void StyleLiquidTileButton(Button button, int cornerRadius = 18)
+    {
+        button.UseVisualStyleBackColor = false;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 2;
+        button.FlatAppearance.BorderColor = Sky;
+        button.FlatAppearance.MouseOverBackColor = Sky;
+        button.FlatAppearance.MouseDownBackColor = SkyDark;
+        button.BackColor = SkyLight;
+        button.ForeColor = SkyDark;
+        button.Font = BoldFont;
+        button.Cursor = Cursors.Hand;
+        button.TextAlign = ContentAlignment.MiddleCenter;
+
+        void ApplyRoundedRegion(object? sender, EventArgs e)
+        {
+            using var path = RoundedRectPath(button.ClientRectangle, cornerRadius);
+            button.Region = new Region(path);
+        }
+
+        button.Resize += ApplyRoundedRegion;
+        ApplyRoundedRegion(button, EventArgs.Empty);
+
+        // 마우스가 올라오면 배경이 진해지는 것과 함께 글자색도 흰색으로 바꿔 눈에 띄게 한다
+        // (FlatAppearance.MouseOverBackColor만으로는 글자색까지는 못 바꾸므로 직접 처리).
+        button.MouseEnter += (_, _) => button.ForeColor = Color.White;
+        button.MouseLeave += (_, _) => button.ForeColor = SkyDark;
+    }
+
+    private static GraphicsPath RoundedRectPath(Rectangle bounds, int radius)
+    {
+        var path = new GraphicsPath();
+        if (bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return path;
+        }
+
+        var diameter = Math.Min(radius * 2, Math.Min(bounds.Width, bounds.Height));
+        var arc = new Rectangle(bounds.Location, new Size(diameter, diameter));
+
+        path.AddArc(arc, 180, 90);
+        arc.X = bounds.Right - diameter;
+        path.AddArc(arc, 270, 90);
+        arc.Y = bounds.Bottom - diameter;
+        path.AddArc(arc, 0, 90);
+        arc.X = bounds.Left;
+        path.AddArc(arc, 90, 90);
+        path.CloseFigure();
+        return path;
     }
 
     public static void StyleHeaderLabel(Label label)

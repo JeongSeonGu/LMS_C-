@@ -48,9 +48,16 @@ public sealed class PersonalScheduleForm : Form
         Left = 108, Top = 10, Width = 80, Text = "삭제", Enabled = false, Anchor = AnchorStyles.Top | AnchorStyles.Left,
     };
 
+    // ⚠ 예전에는 이 라벨을 버튼들과 같은 줄에 Left=200,Width=350 절대 좌표로 두었는데,
+    // 그 폭 안에 한글 전체 문구가 다 안 들어가서 뒷부분이 그냥 잘려 보이는(말줄임표조차
+    // 없이 Label 경계 밖은 그리지 않는) 문제가 있었다. 지금은 버튼 줄 바로 아래에
+    // Dock=Bottom으로 패널 전체 너비를 다 쓰게 해서 문구가 잘리지 않는다.
     private readonly Label _disclaimerLabel = new()
     {
-        Left = 200, Top = 15, Width = 350, Height = 20, Anchor = AnchorStyles.Top | AnchorStyles.Left,
+        Dock = DockStyle.Bottom,
+        Height = 28,
+        TextAlign = ContentAlignment.MiddleLeft,
+        Padding = new Padding(20, 0, 20, 0),
         Text = "개인일정은 로컬에만 기록될 뿐 학사 일정과 연동이 되지 않습니다.",
     };
 
@@ -70,8 +77,8 @@ public sealed class PersonalScheduleForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(660, 490);
-        MinimumSize = new Size(640, 480);
+        ClientSize = new Size(660, 510);
+        MinimumSize = new Size(640, 500);
 
         BuildColumns();
         UiTheme.StyleGrid(_grid);
@@ -81,7 +88,7 @@ public sealed class PersonalScheduleForm : Form
         UiTheme.StyleSecondaryButton(_closeButton);
         UiTheme.StyleSubHeaderLabel(_titleLabel);
         _titleLabel.ForeColor = UiTheme.SkyDark;
-        UiTheme.StyleHintLabel(_disclaimerLabel);
+        _disclaimerLabel.ForeColor = UiTheme.Danger;
 
         _topPanel.Controls.Add(_titleLabel);
         _topPanel.Controls.Add(_addButton);
@@ -93,7 +100,8 @@ public sealed class PersonalScheduleForm : Form
 
         _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
         _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+        // 버튼 줄(위) + 안내 문구 줄(아래, Dock=Bottom)이 겹치지 않도록 50f보다 넉넉하게 잡는다.
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 74f));
         _root.Controls.Add(_topPanel, 0, 0);
         _root.Controls.Add(_contentPanel, 0, 1);
         _root.Controls.Add(_bottomPanel, 0, 2);

@@ -39,9 +39,16 @@ public sealed class PersonalScheduleEditForm : Form
         Multiline = true, ScrollBars = ScrollBars.Vertical,
     };
 
+    // 이 창은 폭이 좁아(390px) 문구 전체가 한 줄에 안 들어간다. Dock=Bottom + 충분한
+    // Height(두 줄 분량)를 주면 Label이 자동으로 줄바꿈해서 보여준다 — 예전처럼 Height가
+    // 한 줄 분량(20~30)뿐이면 줄바꿈된 두 번째 줄이 그대로 잘려서 "…연동이 되지"까지만
+    // 보이고 "않습니다."가 사라지는 문제가 있었다.
     private readonly Label _disclaimerLabel = new()
     {
-        Left = 20, Top = 42, Width = 350, Height = 30,
+        Dock = DockStyle.Bottom,
+        Height = 44,
+        TextAlign = ContentAlignment.MiddleLeft,
+        Padding = new Padding(20, 0, 20, 0),
         Text = "개인일정은 로컬에만 기록될 뿐 학사 일정과 연동이 되지 않습니다.",
     };
 
@@ -61,8 +68,8 @@ public sealed class PersonalScheduleEditForm : Form
         MaximizeBox = true;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(390, 400);
-        MinimumSize = new Size(420, 420);
+        ClientSize = new Size(390, 420);
+        MinimumSize = new Size(420, 440);
 
         _topPanel.Controls.Add(new Label { Left = 0, Top = 11, Width = 90, Text = "제목" });
         _topPanel.Controls.Add(new Label { Left = 0, Top = 46, Width = 90, Text = "날짜" });
@@ -78,14 +85,14 @@ public sealed class PersonalScheduleEditForm : Form
 
         _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 118f));
         _root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 78f));
+        _root.RowStyles.Add(new RowStyle(SizeType.Absolute, 98f));
         _root.Controls.Add(_topPanel, 0, 0);
         _root.Controls.Add(_bodyPanel, 0, 1);
         _root.Controls.Add(_bottomPanel, 0, 2);
 
         Controls.Add(_root);
 
-        UiTheme.StyleHintLabel(_disclaimerLabel);
+        _disclaimerLabel.ForeColor = UiTheme.Danger;
         _saveButton.Text = editing is null ? "등록" : "수정";
 
         if (editing is not null)

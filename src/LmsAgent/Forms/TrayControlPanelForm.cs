@@ -28,11 +28,16 @@ public sealed class TrayControlPanelForm : Form
         Padding = new Padding(0, 4, 0, 8),
     };
 
+    // 세로로 긴 목록 대신, 참고 이미지처럼 정사각형/직사각형 타일 버튼이 가로로 나열되다가
+    // 폭이 차면 다음 줄로 넘어가는 "카드 그리드" 배치로 바꿨다(WrapContents=true).
     private readonly FlowLayoutPanel _content = new()
     {
-        Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.TopDown, WrapContents = false,
+        Dock = DockStyle.Fill, AutoScroll = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true,
         BackColor = UiTheme.Surface, Padding = new Padding(24, 16, 24, 16),
     };
+
+    private const int TileWidth = 200;
+    private const int TileHeight = 130;
 
     private readonly Panel _contentHost = new() { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
@@ -41,8 +46,19 @@ public sealed class TrayControlPanelForm : Form
     private Point _dragStart;
     private int _actionWidth = 380;
 
-    public TrayControlPanelForm(ContextMenuStrip menu)
+    private readonly SessionManager _session;
+    private readonly Action _onLogout;
+
+    /// <param name="session">헤더에 로그인 중인 ID/이름을 보여주기 위한 읽기 전용 참조입니다
+    /// (이 창을 여는 시점의 스냅샷 — 다른 패널들과 같은 규칙).</param>
+    /// <param name="onLogout">헤더의 "로그아웃" 버튼을 눌렀을 때 실행할 동작. 실제 로그아웃
+    /// 처리(서버 통보 + 로컬 세션 정리)는 <see cref="LmsAgent.App.TrayApplicationContext"/>가
+    /// 갖고 있으므로, 이 창은 다른 메뉴 항목들과 마찬가지로 호출만 위임합니다.</param>
+    public TrayControlPanelForm(ContextMenuStrip menu, SessionManager session, Action onLogout)
     {
+        _session = session;
+        _onLogout = onLogout;
+
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;
@@ -105,7 +121,45 @@ public sealed class TrayControlPanelForm : Form
         closeButton.Click += (_, _) => Close();
 
         _header.Controls.Add(titleLabel);
+        // Dock=Right는 먼저 추가한 컨트롤이 진짜 오른쪽 끝을 차지하므로, closeButton을
+        // 가장 먼저 추가해 항상 맨 끝에 두고, 로그아웃 버튼·ID/이름 라벨을 그 왼쪽에 순서대로 둔다.
         _header.Controls.Add(closeButton);
+
+        // 로그인 중일 때만 ID/이름과 로그아웃 버튼을 보여준다(스냅샷 — 이 창이 열려 있는
+        // 동안 로그인 상태가 바뀌어도 다시 그리지 않는다, 하단 상태 표시줄과 같은 규칙).
+        if (_session.Profile is { } profile)
+        {
+            var logoutButton = new Button
+            {
+                Dock = DockStyle.Right,
+                Width = 84,
+                Text = "로그아웃",
+                FlatStyle = FlatStyle.Flat,
+                ForeColor = Color.White,
+                Font = UiTheme.BaseFont,
+                Cursor = Cursors.Hand,
+            };
+            logoutButton.FlatAppearance.BorderSize = 0;
+            logoutButton.FlatAppearance.MouseOverBackColor = UiTheme.SkyDark;
+            logoutButton.Click += (_, _) =>
+            {
+                _onLogout();
+                Close();
+            };
+            _header.Controls.Add(logoutButton);
+
+            var userInfoLabel = new Label
+            {
+                Dock = DockStyle.Right,
+                Width = 220,
+                Text = $"ID: {profile.LoginId}   이름: {profile.Name}",
+                ForeColor = Color.White,
+                Font = UiTheme.BaseFont,
+                TextAlign = ContentAlignment.MiddleRight,
+                Padding = new Padding(0, 0, 12, 0),
+            };
+            _header.Controls.Add(userInfoLabel);
+        }
 
         // 테두리 없는 창이라 제목표시줄을 직접 드래그로 옮길 수 있게 한다.
         void StartDrag(object? _, MouseEventArgs e) { _dragging = true; _dragStart = e.Location; }
@@ -246,9 +300,12 @@ public sealed class TrayControlPanelForm : Form
         {
             if (child is ToolStripSeparator)
             {
+                // 타일이 가로로 흐르다가(WrapContents) 이 구분선의 너비가 남은 공간보다
+                // 넓어서 자기 자신이 새 줄로 밀려나고, 그 다음 타일도 자연히 그 아래 줄부터
+                // 다시 시작한다 — 세로 목록이었을 때와 같은 그룹 구분 효과를 그대로 낸다.
                 _content.Controls.Add(new Panel
                 {
-                    Width = _actionWidth, Height = 1, BackColor = UiTheme.Border, Margin = new Padding(0, 8, 0, 8),
+                    Width = _actionWidth, Height = 1, BackColor = UiTheme.Border, Margin = new Padding(0, 4, 0, 16),
                 });
             }
             else if (child is ToolStripMenuItem childItem)
@@ -260,24 +317,18 @@ public sealed class TrayControlPanelForm : Form
         _content.ResumeLayout();
     }
 
+    /// <summary>세로로 긴 목록 항목 대신, 모서리가 둥근 정사각형/직사각형 타일 버튼으로
+    /// 보여준다(참고 이미지의 카드 그리드 스타일).</summary>
     private Button BuildActionButton(ToolStripMenuItem item)
     {
         var button = new Button
         {
-            Width = _actionWidth,
-            Height = 44,
+            Width = TileWidth,
+            Height = TileHeight,
             Text = item.Text.Replace("...", "").TrimEnd(),
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(16, 0, 0, 0),
-            Margin = new Padding(0, 0, 0, 6),
-            FlatStyle = FlatStyle.Flat,
-            ForeColor = UiTheme.TextPrimary,
-            BackColor = UiTheme.SkyPale,
-            Font = UiTheme.BaseFont,
-            Cursor = Cursors.Hand,
+            Margin = new Padding(0, 0, 16, 16),
         };
-        button.FlatAppearance.BorderSize = 0;
-        button.FlatAppearance.MouseOverBackColor = UiTheme.SkyLight;
+        UiTheme.StyleLiquidTileButton(button);
 
         // 이 창은 항목을 소유하지 않으므로, 실제 처리는 원본 메뉴 항목의 Click 핸들러에
         // 그대로 맡긴다(트레이 컨텍스트 메뉴를 오른쪽 클릭으로 열었을 때와 완전히 동일한 동작).

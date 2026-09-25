@@ -69,9 +69,12 @@ public sealed class PersonalScheduleOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
 
+        // Width가 문구 실제 폭보다 좁으면 줄바꿈된 두 번째 줄이 Height 밖으로 잘려 보인다
+        // (개인일정 등록 목록 창에서 실제로 겪은 문제) — 넉넉한 Width에 두 줄 분량의
+        // Height를 같이 줘서, 혹시 줄바꿈되더라도 잘리지 않게 한다.
         var disclaimer = new Label
         {
-            Left = 20, Top = 220, Width = 420, Height = 20,
+            Left = 20, Top = 220, Width = 460, Height = 40,
             Text = "개인일정은 로컬에만 기록될 뿐 학사 일정과 연동이 되지 않습니다.",
         };
         UiTheme.StyleHintLabel(disclaimer);
