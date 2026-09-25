@@ -50,8 +50,9 @@ public sealed class StickyNoteService : IDisposable
         };
     }
 
-    /// <summary>업무 일지를 켤 때(또는 🗒 버튼을 눌렀을 때) 호출합니다. 저장된 메모를 복원해서
-    /// 보여주고, 저장된 메모가 하나도 없으면(최초 사용) 빈 메모를 하나 새로 만듭니다.</summary>
+    /// <summary>🗒 버튼을 눌렀을 때 호출합니다. 저장된 메모를 복원해서 보여주고, 저장된
+    /// 메모가 하나도 없으면(최초 사용) 빈 메모를 하나 새로 만듭니다 — 사용자가 직접
+    /// "메모를 쓰겠다"고 누른 것이므로 빈 메모를 새로 만들어도 됩니다.</summary>
     public void ShowAll()
     {
         EnsureLoaded();
@@ -61,6 +62,21 @@ public sealed class StickyNoteService : IDisposable
             CreateNew();
             return;
         }
+
+        foreach (var note in _notes.Values)
+        {
+            note.Show();
+        }
+    }
+
+    /// <summary>업무 일지가 켜질 때(로그인 직후 포함) 자동으로 호출합니다. 예전에 써 둔
+    /// 메모가 있으면 사용자가 🗒 버튼을 다시 누르지 않아도 그대로 복원해서 보여줍니다.
+    /// <see cref="ShowAll"/>과 달리, 저장된 메모가 하나도 없을 때는 빈 메모를 새로 만들지
+    /// 않습니다 — 이건 사용자가 직접 요청한 동작이 아니라 자동 복원이므로, 써 본 적 없는
+    /// 사용자에게 갑자기 빈 메모 창이 나타나면 안 됩니다.</summary>
+    public void RestoreIfAny()
+    {
+        EnsureLoaded();
 
         foreach (var note in _notes.Values)
         {

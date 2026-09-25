@@ -37,7 +37,23 @@ public sealed class WorkJournalService : IDisposable
         _timer = new Timer { Interval = (int)TimeSpan.FromMinutes(15).TotalMilliseconds };
         _timer.Tick += async (_, _) => await RefreshAsync();
         // 로그인/로그아웃(SessionManager.Clear) 시 즉시 로그인 전 안내 ↔ 실제 내용으로 전환한다.
-        _session.SessionChanged += RefreshNow;
+        _session.SessionChanged += OnSessionChanged;
+    }
+
+    /// <summary>
+    /// 예전에는 로그인 직후 쪽지(스티커 메모)가 자동으로 다시 나타나지 않고, 🗒 버튼을
+    /// 한 번 더 눌러야만 예전 메모가 보였다 — 사용자가 남긴 메모를 매번 다시 찾아 눌러야
+    /// 하는 게 불편하다는 피드백을 반영해, 로그인에 성공하면(업무 일지가 켜져 있는 경우에
+    /// 한해) 저장된 메모가 있는지 자동으로 확인해 있으면 함께 보여준다.
+    /// </summary>
+    private void OnSessionChanged()
+    {
+        RefreshNow();
+
+        if (_settings.TaskJournalEnabled && _session.IsLoggedIn)
+        {
+            _stickyNotes.RestoreIfAny();
+        }
     }
 
     /// <summary>환경설정이 바뀔 때마다(또는 로그인 직후) 호출해서 오버레이 상태를 다시 맞춥니다.
@@ -329,7 +345,7 @@ public sealed class WorkJournalService : IDisposable
 
     public void Dispose()
     {
-        _session.SessionChanged -= RefreshNow;
+        _session.SessionChanged -= OnSessionChanged;
         _timer.Dispose();
         _form?.Dispose();
         _stickyNotes.Dispose();
