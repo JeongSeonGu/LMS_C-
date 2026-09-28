@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using LmsAgent.Configuration;
@@ -93,6 +94,45 @@ public sealed class LicenseGuardService : IDisposable
     {
         Status = status;
         StatusChanged?.Invoke(status);
+        _ = ReportStatusAsync(status);
+    }
+
+    /// <summary>
+    /// docs/라이센스_상태_보고_API_요청.md §10-5 확정본 — 판정 직후 서버로 결과를 보고해서
+    /// 관리자 화면(admin/rt-devices.html)의 "PC 별 라이센스 인증 상태" 표에 반영되게 한다.
+    /// 이 보고 자체가 실패해도(네트워크 오류, SQL 미적용 등) 이미 위에서 끝난 실제 인증
+    /// 판정·3분 자동 종료 로직에는 전혀 영향을 주지 않는다 — 어디까지나 부가 기능이다.
+    /// </summary>
+    private async Task ReportStatusAsync(LicenseStatus status)
+    {
+        var statusText = status switch
+        {
+            LicenseStatus.Valid => "valid",
+            LicenseStatus.Invalid => "invalid",
+            LicenseStatus.NotConfigured => "not_configured",
+            _ => null, // Unknown(확인 전)은 보고 대상이 아니다.
+        };
+        if (statusText is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            var result = await _api.ReportLicenseStatusAsync(
+                statusText, Environment.MachineName, _settings.LicenseKey, version?.ToString(), DateTime.Now)
+                .ConfigureAwait(true);
+
+            if (!result.Ok)
+            {
+                RealtimeLog.Write($"[라이센스] 인증 상태 보고 실패: {result.ErrorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            RealtimeLog.Write($"[라이센스] 인증 상태 보고 중 예외 발생: {ex.Message}");
+        }
     }
 
     public void Dispose() => _exitTimer.Dispose();

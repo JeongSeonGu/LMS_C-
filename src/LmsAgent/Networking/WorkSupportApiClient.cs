@@ -362,6 +362,45 @@ public sealed class WorkSupportApiClient : IDisposable
     }
 
     /* =========================================================
+     * 라이센스 인증 상태 보고 (docs/라이센스_상태_보고_API_요청.md §10-5 확정본)
+     * 서버는 이 결과를 학교당 (로그인 계정, device_name) 기준 "최신 1건"으로만 보관하고,
+     * 관리자 화면(admin/rt-devices.html)의 "PC 별 라이센스 인증 상태" 표에 보여준다.
+     * 이 API 자체는 키 값을 비교/발급하지 않는다 — 비교는 지금처럼 C# 쪽에서 계속 하고,
+     * 그 결과만 보고한다.
+     * ========================================================= */
+
+    /// <param name="status">"valid" | "invalid" | "not_configured" (LicenseStatus 그대로).</param>
+    /// <param name="deviceName">서버가 최대 120자로 자른다 — 그냥 Environment.MachineName을 보낸다.</param>
+    /// <param name="enteredKey">그 PC에 입력돼 있던 인증키(선택, 최대 120자로 서버가 자름).</param>
+    /// <param name="appVersion">실행 중인 프로그램 버전(선택, 최대 40자).</param>
+    /// <param name="checkedAt">검사 시각(선택). 서버가 해석 못 하면 그냥 무시할 뿐 오류는 아니다.</param>
+    public async Task<ApiEnvelope<object>> ReportLicenseStatusAsync(
+        string status, string deviceName, string? enteredKey, string? appVersion, DateTime? checkedAt)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["action"] = "report",
+            ["status"] = status,
+            ["device_name"] = deviceName,
+        };
+        if (!string.IsNullOrWhiteSpace(enteredKey))
+        {
+            fields["entered_key"] = enteredKey;
+        }
+        if (!string.IsNullOrWhiteSpace(appVersion))
+        {
+            fields["app_version"] = appVersion;
+        }
+        if (checkedAt.HasValue)
+        {
+            fields["checked_at"] = checkedAt.Value.ToString("o");
+        }
+
+        return await PostFormAsync<object>("php/features/license_status.php", new FormUrlEncodedContent(fields))
+            .ConfigureAwait(false);
+    }
+
+    /* =========================================================
      * 기본정보 > 공통계정 (조회 전용, 비밀번호는 "보기"로만 확인)
      * ========================================================= */
 
