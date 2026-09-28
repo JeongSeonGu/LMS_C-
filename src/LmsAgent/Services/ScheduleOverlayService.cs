@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using LmsAgent.Configuration;
 using LmsAgent.Forms;
@@ -96,7 +97,22 @@ public sealed class ScheduleOverlayService : IDisposable
                 if (periodEnd.Month != periodStart.Month)
                 {
                     var extra = await _api.GetEventsAsync(periodEnd.Year, periodEnd.Month).ConfigureAwait(true);
-                    if (extra.Ok && extra.Data is not null) events.AddRange(extra.Data);
+                    if (extra.Ok && extra.Data is not null)
+                    {
+                        // ⚠ 여러 날에 걸친 일정(예: "기초학력 2차 향상도 검사 기간")이 두 달에
+                        // 걸쳐 있으면, 서버는 두 달 조회 모두에 그 일정을 포함해서 응답한다
+                        // (각 달의 "그 달과 겹치는 일정 전부"를 돌려주므로). 이 둘을 그냥
+                        // AddRange만 하면 같은 일정이 두 번 나타난다 — 실제로 이 버그를 겪었다.
+                        // 학사 일정 id는 서버 기준 유일하므로, id로 걸러 중복을 제거한다.
+                        var seenIds = new HashSet<int>(events.Select(e => e.Id));
+                        foreach (var ev in extra.Data)
+                        {
+                            if (seenIds.Add(ev.Id))
+                            {
+                                events.Add(ev);
+                            }
+                        }
+                    }
                 }
             }
             else

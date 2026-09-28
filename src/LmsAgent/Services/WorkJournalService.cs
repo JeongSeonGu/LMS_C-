@@ -170,6 +170,13 @@ public sealed class WorkJournalService : IDisposable
                 (rangeEnd.Year, rangeEnd.Month),
             };
 
+            // ⚠ 조회 범위(주 단위)가 두 달에 걸치면 위 months에 (년,월)이 2개가 되어 아래에서
+            // 두 달을 각각 조회한다. 여러 날에 걸친 일정(예: "기초학력 2차 향상도 검사 기간")이
+            // 두 달에 걸쳐 있으면, 서버는 "그 달과 겹치는 일정 전부"를 돌려주므로 같은 일정이
+            // 두 응답 모두에 들어 있을 수 있다 — id로 이미 처리한 일정이면 건너뛰어 중복을
+            // 막는다(학사달력 배경화면에서 같은 버그로 실제 일정이 2개로 보이던 문제와 동일).
+            var seenEventIds = new HashSet<int>();
+
             foreach (var (year, month) in months)
             {
                 // ⚠ 반드시 true여야 한다 — 아래 _form.SetContent(...)가 WinForms 컨트롤을 직접
@@ -184,6 +191,11 @@ public sealed class WorkJournalService : IDisposable
 
                 foreach (var ev in result.Data)
                 {
+                    if (!seenEventIds.Add(ev.Id))
+                    {
+                        continue;
+                    }
+
                     var date = ev.StartDateTime.Date;
                     if (date < rangeStart || date > rangeEnd)
                     {
