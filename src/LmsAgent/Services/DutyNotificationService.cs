@@ -86,16 +86,22 @@ public sealed class DutyNotificationService : IDisposable
                 && NotifiableDutyTypes.Contains(r.DutyType)
                 && r.DateValue == DateOnly.FromDateTime(day);
 
-            var todayHit = records.FirstOrDefault(r => Matches(r, today));
+            // 오늘 기록 중 시간이 지정된 건(하루 종일이 아닌 경우)은, 그 시간대일 때만
+            // "지금 부재중" 배너를 띄운다 — 예전에는 날짜만 맞으면 종일 배너가 떠 있어서,
+            // 예를 들어 08:30~09:00 지각 기록이 오후까지 계속 "부재중"으로 보였다.
+            // 내일 예정 배너는 미리 알려주는 목적이므로 시간 제한 없이 그대로 둔다.
+            var todayHit = records
+                .Where(r => Matches(r, today))
+                .FirstOrDefault(r => IsWithinActiveWindow(r, DateTime.Now));
             var tomorrowHit = records.FirstOrDefault(r => Matches(r, tomorrow));
 
             if (todayHit is not null)
             {
-                ShowBanner($"{todayHit.Position}선생님이 오늘 {todayHit.DutyType}(으)로 부재중입니다.", urgent: true);
+                ShowBanner(BuildDutyMessage(todayHit, isToday: true), urgent: true);
             }
             else if (tomorrowHit is not null)
             {
-                ShowBanner($"내일은 {tomorrowHit.Position}선생님이 {tomorrowHit.DutyType} 예정입니다.", urgent: false);
+                ShowBanner(BuildDutyMessage(tomorrowHit, isToday: false), urgent: false);
             }
             else
             {
@@ -106,6 +112,43 @@ public sealed class DutyNotificationService : IDisposable
         {
             // 네트워크 오류는 조용히 무시하고 다음 주기에 다시 확인합니다.
         }
+    }
+
+    /// <summary>하루 종일 기록이면 항상 true. 시간이 지정된 기록이면 지금 시각이 그
+    /// 시작~종료 시간 사이일 때만 true를 돌려준다(시간 파싱이 실패하면 안전하게 종일
+    /// 취급). "08:30~09:00 지각"처럼 짧은 시간대 기록이 하루 종일 배너로 남아 있지
+    /// 않도록 하기 위한 것이다.</summary>
+    private static bool IsWithinActiveWindow(DutyRecord r, DateTime now)
+    {
+        if (r.IsAllDay)
+        {
+            return true;
+        }
+
+        if (!TimeSpan.TryParse(r.TimeStart, out var start) || !TimeSpan.TryParse(r.TimeEnd, out var end))
+        {
+            return true;
+        }
+
+        var nowTimeOfDay = now.TimeOfDay;
+        return nowTimeOfDay >= start && nowTimeOfDay <= end;
+    }
+
+    /// <summary>기타 내용(Note)이 있으면 복무 구분 뒤에 괄호로 붙이고, 시간이 지정된
+    /// 기록이면 "HH:mm ~ HH:mm" 구간을 함께 보여준다. 예: "교감선생님 연가(지각)
+    /// 08:30 ~ 09:00".</summary>
+    private static string BuildDutyMessage(DutyRecord r, bool isToday)
+    {
+        var dutyTypeText = string.IsNullOrWhiteSpace(r.Note) ? r.DutyType : $"{r.DutyType}({r.Note})";
+
+        if (r.IsAllDay)
+        {
+            return isToday
+                ? $"{r.Position}선생님이 오늘 {dutyTypeText}(으)로 부재중입니다."
+                : $"내일은 {r.Position}선생님이 {dutyTypeText} 예정입니다.";
+        }
+
+        return $"{r.Position}선생님 {dutyTypeText} {r.TimeStart} ~ {r.TimeEnd}";
     }
 
     private void ShowBanner(string text, bool urgent)
