@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -185,8 +186,21 @@ public sealed class WorkSupportApiClient : IDisposable
 
     public async Task<ApiEnvelope<List<SchoolEvent>>> GetEventsAsync(int year, int month)
     {
-        return await GetJsonAsync<List<SchoolEvent>>(
+        var result = await GetJsonAsync<List<SchoolEvent>>(
             $"SchoolCalendar/php/api/events.php?action=list&year={year}&month={month}").ConfigureAwait(false);
+
+        // ⚠ 같은 달을 조회하는 이 한 번의 응답 안에서도, 서버가 일정 하나를 두 번 돌려주는
+        // 경우가 실제로 있었다("기초학력 2차 향상도 검사 기간"처럼 알림 대상·태그가 여럿인
+        // 일정에서 확인됨 — notify_targets/tags처럼 1:N으로 조인되는 테이블과 함께 조회하면서
+        // GROUP BY/DISTINCT가 빠진 쿼리일 때 흔히 생기는 증상으로 추정). 이 API를 쓰는 모든
+        // 화면(업무 일지·학사달력 배경화면·일정 목록 등)이 전부 안전해지도록, id 기준으로
+        // 한 번 걸러서 반환한다 — 서버가 애초에 중복 없이 내려주면 이 필터는 아무 일도 하지 않는다.
+        if (result.Data is not null)
+        {
+            result.Data = result.Data.GroupBy(ev => ev.Id).Select(g => g.First()).ToList();
+        }
+
+        return result;
     }
 
     /// <summary>일정 단건 조회. 웹소켓_데이터통신규칙.md §7-A(담당업무 변경 감지)에서
