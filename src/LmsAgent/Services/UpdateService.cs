@@ -302,15 +302,50 @@ public sealed class UpdateService
         }
 
         var scriptPath = Path.Combine(updateRoot, "apply_update.bat");
+        var targetExePath = Path.Combine(installDir, exeName);
+        var errorLogPath = Path.Combine(installDir, "update_error.log");
 
+        // ⚠ 실제로 겪은 또 다른 원인 — zip이 정상적으로(폴더를 한 겹 더 싸지 않고) 압축돼
+        // 있었는데도 같은 "파일을 찾을 수 없습니다" 오류가 났다. 고정된 2초만 기다리고
+        // xcopy를 실행하는데, 방금 종료 명령을 내린 현재 프로세스(자기 자신의 exe 파일)가
+        // 실제로 파일 핸들을 놓기까지 2초보다 더 걸리면(자체 포함 실행 파일이라 크고,
+        // 백신 검사 등으로 지연될 수 있다) xcopy가 그 파일 하나만 덮어쓰지 못한 채 지나갈
+        // 수 있다 — 그러면 재시작 시점에 exe가 없거나 손상된 상태일 수 있다. 고정 대기
+        // 대신 "같은 이름의 프로세스가 작업 목록에서 없어질 때까지" 최대 15초 정도 반복
+        // 확인하도록 바꾸고, 복사 뒤에는 실제로 exe가 그 자리에 있는지 확인해서 없으면
+        // 조용히 실패하는 대신 오류를 파일로 남긴다.
         var script = new StringBuilder();
         script.AppendLine("@echo off");
-        script.AppendLine("timeout /t 2 /nobreak > NUL");
+        // ⚠ 진짜 원인이었던 버그 — 이 파일을 Encoding.ASCII로 저장했었는데, Windows
+        // 사용자 계정 이름이 한글이면(예: "C:\Users\홍길동\...") ASCII로 표현할 수 없는
+        // 글자가 전부 '?'로 뭉개져 버린다. 그러면 아래 xcopy/start 명령에 박힌 경로
+        // 자체가 실제로 "C:\Users\??\..." 처럼 깨진 채로 이 파일에 저장되고, cmd.exe는
+        // 그 깨진 경로를 그대로 찾다가 "파일을 찾을 수 없습니다" 오류를 낸다(사용자가
+        // 실제로 겪은 오류 메시지에 그대로 "??"가 찍혀 있었다 — 사용자가 지운 게 아니라
+        // 인코딩 손상이었다). UTF-8(BOM 없이)로 저장하고, cmd.exe가 그 UTF-8을 제대로
+        // 읽도록 맨 앞에서 코드 페이지를 65001(UTF-8)로 바꾼다.
+        script.AppendLine("chcp 65001 > nul");
+        script.AppendLine("setlocal enabledelayedexpansion");
+        script.AppendLine("set WAITED=0");
+        script.AppendLine(":waitloop");
+        script.AppendLine($"tasklist /FI \"IMAGENAME eq {exeName}\" 2>NUL | find /I \"{exeName}\" >NUL");
+        script.AppendLine("if errorlevel 1 goto copyfiles");
+        script.AppendLine("if !WAITED! GEQ 15 goto copyfiles");
+        script.AppendLine("timeout /t 1 /nobreak > NUL");
+        script.AppendLine("set /a WAITED=WAITED+1");
+        script.AppendLine("goto waitloop");
+        script.AppendLine(":copyfiles");
         script.AppendLine($"xcopy /E /Y /I \"{copySource}\" \"{installDir}\"");
-        script.AppendLine($"start \"\" \"{Path.Combine(installDir, exeName)}\"");
+        script.AppendLine($"if not exist \"{targetExePath}\" (");
+        script.AppendLine($"  echo [%date% %time%] 업데이트 파일 복사 후에도 실행 파일을 찾을 수 없습니다: {targetExePath} >> \"{errorLogPath}\"");
+        script.AppendLine("  exit /b 1");
+        script.AppendLine(")");
+        script.AppendLine($"start \"\" \"{targetExePath}\"");
         script.AppendLine("del \"%~f0\"");
 
-        File.WriteAllText(scriptPath, script.ToString(), Encoding.ASCII);
+        // BOM을 붙이면 첫 줄(@echo off)이 깨져 보이는 cmd.exe 버전이 있어 BOM 없는
+        // UTF-8로 저장한다 — 위 "chcp 65001"과 짝을 맞춰야 한글 경로가 안전하다.
+        File.WriteAllText(scriptPath, script.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         var startInfo = new ProcessStartInfo
         {
