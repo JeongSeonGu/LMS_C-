@@ -1042,11 +1042,21 @@ dotnet publish src/LmsAgent/LmsAgent.csproj -c Release -r win-x64 ^
 3. 위 "Visual Studio에서 배포용 파일 만들기" 대로 **게시(Publish)**를 실행해 `dist\LmsAgent\`
    폴더를 새로 만듭니다. 같은 폴더에 이전 버전 결과물이 남아있으면 옛 파일이 섞여 들어갈
    수 있으니, 게시 전에 `dist\LmsAgent` 폴더를 탐색기에서 미리 비워 두는 것을 권장합니다.
-4. `dist\LmsAgent` 폴더 **안으로** 들어가서 그 안의 파일 전체를 선택한 뒤 압축합니다
-   (`dist` 폴더 자체를 압축하면 압축 파일 안에 폴더가 한 겹 더 들어가 버려서, 업데이트
-   적용 시 `xcopy`가 실행 파일을 제자리에 덮어쓰지 못합니다 — 반드시 `LmsAgent.exe`가
-   zip의 최상위에 오도록 압축하세요). 파일명은 버전을 포함해서 예:
+4. `dist\LmsAgent` 폴더 **안으로** 들어가서 그 안의 파일 전체를 선택한 뒤 압축하는 것을
+   권장합니다(`LmsAgent.exe`가 zip의 최상위에 오도록). 파일명은 버전을 포함해서 예:
    `LmsAgent-1.2.0.0.zip`처럼 짓습니다.
+
+   > ⚠ **과거 버그(수정됨)**: `dist` **폴더 자체**를 압축하면(그 안의 파일들이 아니라
+   > 폴더를 통째로) 압축 파일 안에 `LmsAgent-1.x.x.x\` 폴더가 한 겹 더 들어가고, 실제로
+   > 이 실수로 배포한 zip 때문에 사용자 PC에서 업데이트 적용 후 재시작 시
+   > `...\Downloads\LmsAgent-1.4.0.0\LmsAgent.exe'를(를) 찾을 수 없습니다`라는 오류가
+   > 났습니다 — `xcopy`가 그 한 겹 더 들어간 폴더째로 설치 위치에 복사해서, 실제 exe는
+   > `설치폴더\LmsAgent-1.4.0.0\LmsAgent.exe`에 있는데 재시작 스크립트는
+   > `설치폴더\LmsAgent.exe`를 찾고 있었기 때문입니다. 지금은
+   > `UpdateService.LaunchUpdaterAndExitCurrentProcess`가 압축을 푼 뒤 최상위에 exe가
+   > 없으면 폴더가 하나뿐인지 확인해서 그 안을 실제 복사 원본으로 자동으로 바꿔주므로,
+   > 이 실수를 하더라도(위 방식대로 압축하는 것을 권장하지만) 다음 업데이트부터는
+   > 정상적으로 적용됩니다.
 5. 이 zip 파일의 SHA-256 해시를 구해 둡니다(다음 단계에서 `manifest.json`의 `sha256`에
    넣습니다). Windows 명령 프롬프트에서:
    ```

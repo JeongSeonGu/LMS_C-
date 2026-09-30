@@ -281,12 +281,32 @@ public sealed class UpdateService
         ZipFile.ExtractToDirectory(zipPath, extractDir);
 
         var exeName = Path.GetFileName(Environment.ProcessPath ?? "LmsAgent.exe");
+
+        // ⚠ 배포용 zip을 "LmsAgent.exe가 든 폴더 자체"로 압축하면(폴더 안의 내용물이 아니라
+        // 폴더를 통째로) 압축을 풀었을 때 exe가 extractDir 바로 밑이 아니라
+        // extractDir\LmsAgent-x.x.x.x\ 처럼 한 단계 더 들어간 곳에 생긴다. 이걸 그대로
+        // xcopy하면 그 하위 폴더째로 설치 폴더 안에 복사되어, 실제 exe는
+        // installDir\LmsAgent-x.x.x.x\LmsAgent.exe에 놓이는데 아래 재시작 명령은
+        // installDir\LmsAgent.exe를 찾다가 "파일을 찾을 수 없습니다" 오류가 난다(실제로
+        // 겪은 문제 — Downloads\LmsAgent-1.4.0.0\LmsAgent.exe를 찾지 못함). extractDir
+        // 바로 밑에 exe가 없고, 최상위 항목이 폴더 하나뿐이면 그 폴더 안을 "진짜 복사
+        // 원본"으로 대신 쓴다 — 압축을 어느 구조로 하든 다음 업데이트부터는 안전하다.
+        var copySource = extractDir;
+        if (!File.Exists(Path.Combine(extractDir, exeName)))
+        {
+            var topEntries = Directory.GetFileSystemEntries(extractDir);
+            if (topEntries.Length == 1 && Directory.Exists(topEntries[0]))
+            {
+                copySource = topEntries[0];
+            }
+        }
+
         var scriptPath = Path.Combine(updateRoot, "apply_update.bat");
 
         var script = new StringBuilder();
         script.AppendLine("@echo off");
         script.AppendLine("timeout /t 2 /nobreak > NUL");
-        script.AppendLine($"xcopy /E /Y /I \"{extractDir}\" \"{installDir}\"");
+        script.AppendLine($"xcopy /E /Y /I \"{copySource}\" \"{installDir}\"");
         script.AppendLine($"start \"\" \"{Path.Combine(installDir, exeName)}\"");
         script.AppendLine("del \"%~f0\"");
 
