@@ -90,18 +90,22 @@ public sealed class DutyNotificationService : IDisposable
             // "지금 부재중" 배너를 띄운다 — 예전에는 날짜만 맞으면 종일 배너가 떠 있어서,
             // 예를 들어 08:30~09:00 지각 기록이 오후까지 계속 "부재중"으로 보였다.
             // 내일 예정 배너는 미리 알려주는 목적이므로 시간 제한 없이 그대로 둔다.
-            var todayHit = records
+            // 교장/교감이 같은 날 동시에 복무 기록이 있을 수 있으므로, 한 건만 고르지 않고
+            // 조건에 맞는 기록을 모두 모아 한 배너에 함께 보여준다(각자 자신의 시간대에서만
+            // 보이고 사라지는 것은 그대로 유지).
+            var todayHits = records
                 .Where(r => Matches(r, today))
-                .FirstOrDefault(r => IsWithinActiveWindow(r, DateTime.Now));
-            var tomorrowHit = records.FirstOrDefault(r => Matches(r, tomorrow));
+                .Where(r => IsWithinActiveWindow(r, DateTime.Now))
+                .ToList();
+            var tomorrowHits = records.Where(r => Matches(r, tomorrow)).ToList();
 
-            if (todayHit is not null)
+            if (todayHits.Count > 0)
             {
-                ShowBanner(BuildDutyMessage(todayHit, isToday: true), urgent: true);
+                ShowBanner(BuildDutyMessage(todayHits, isToday: true), urgent: true);
             }
-            else if (tomorrowHit is not null)
+            else if (tomorrowHits.Count > 0)
             {
-                ShowBanner(BuildDutyMessage(tomorrowHit, isToday: false), urgent: false);
+                ShowBanner(BuildDutyMessage(tomorrowHits, isToday: false), urgent: false);
             }
             else
             {
@@ -150,6 +154,11 @@ public sealed class DutyNotificationService : IDisposable
 
         return $"{r.Position}선생님 {dutyTypeText} {r.TimeStart} ~ {r.TimeEnd}";
     }
+
+    /// <summary>같은 날 조건에 맞는 기록이 여러 건(예: 교장·교감 동시 출장)이면 각 기록의
+    /// 메시지를 줄바꿈으로 이어붙여 한 배너에 함께 보여준다.</summary>
+    private static string BuildDutyMessage(List<DutyRecord> records, bool isToday) =>
+        string.Join("\n", records.Select(r => BuildDutyMessage(r, isToday)));
 
     private void ShowBanner(string text, bool urgent)
     {

@@ -19,6 +19,9 @@ public sealed class DutyBannerForm : Form
     private const int CornerRadius = 16;
     private const int IconDiameter = 36;
     private const int ContentMargin = 14;
+    private const int DefaultHeight = 78;
+    private const int DetailTop = 36;
+    private const int BottomPadding = 8;
 
     private static readonly Font HeadlineFont = new("맑은 고딕", 10.5F, FontStyle.Bold);
     private static readonly Font DetailFont = new("맑은 고딕", 9.5F);
@@ -41,7 +44,7 @@ public sealed class DutyBannerForm : Form
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;
         TopMost = true;
-        Size = new Size(360, 78);
+        Size = new Size(360, DefaultHeight);
         BackColor = UiTheme.Surface;
         Opacity = 0;
 
@@ -68,12 +71,29 @@ public sealed class DutyBannerForm : Form
     }
 
     /// <param name="urgent">true면 "당일 부재중"(강한 경고색), false면 "하루 전 예정"(안내색)으로 표시합니다.</param>
+    /// <remarks>text는 교장·교감이 같은 날 동시에 복무 기록이 있는 경우 줄바꿈으로 이어붙인
+    /// 여러 줄일 수 있습니다. 그런 경우를 대비해 높이를 내용에 맞춰 늘립니다.</remarks>
     public void UpdateContent(string text, bool urgent)
     {
         _headline = urgent ? "오늘 부재 안내" : "내일 부재 예정";
         _detail = text;
         _accentColor = urgent ? UiTheme.Danger : UiTheme.Sky;
+        ResizeToFitContent();
         Invalidate();
+    }
+
+    /// <summary>본문(_detail)의 줄 수에 맞춰 배너 높이를 늘립니다. 기본 한 줄짜리 메시지는
+    /// 기존 크기(78px)를 그대로 쓰고, 여러 직위의 메시지가 합쳐진 경우에만 커집니다.</summary>
+    private void ResizeToFitContent()
+    {
+        var textLeft = ContentMargin + 6 + IconDiameter + 12;
+        var textWidth = Math.Max(50, Width - 28 - textLeft - 8);
+
+        var detailSize = TextRenderer.MeasureText(
+            _detail, DetailFont, new Size(textWidth, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.Left | TextFormatFlags.Top);
+
+        var neededHeight = DetailTop + detailSize.Height + BottomPadding;
+        Height = Math.Max(DefaultHeight, neededHeight);
     }
 
     public void PositionTopRight(Screen screen)
