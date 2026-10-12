@@ -152,6 +152,8 @@ public sealed class AppSettings
     public int DutyMonitorIndex { get; set; }
     public bool DutyNotifyVicePrincipal { get; set; } // 교감
     public bool DutyNotifyPrincipal { get; set; }      // 교장
+    public bool DutyNotifyHeadTeacher { get; set; }    // 교무부장
+    public bool DutyNotifyAdminChief { get; set; }     // 행정실장
 
     /// <summary>복무 알림 배너의 불투명도(0~100%). 100이면 완전 불투명.</summary>
     public int DutyBannerOpacityPercent { get; set; } = 100;

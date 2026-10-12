@@ -58,6 +58,8 @@ public sealed class DutyNotificationService : IDisposable
         var watchedPositions = new List<string>();
         if (_settings.DutyNotifyVicePrincipal) watchedPositions.Add("교감");
         if (_settings.DutyNotifyPrincipal) watchedPositions.Add("교장");
+        if (_settings.DutyNotifyHeadTeacher) watchedPositions.Add("교무부장");
+        if (_settings.DutyNotifyAdminChief) watchedPositions.Add("행정실장");
 
         if (watchedPositions.Count == 0)
         {
@@ -152,7 +154,9 @@ public sealed class DutyNotificationService : IDisposable
                 : $"내일은 {r.Position}선생님이 {dutyTypeText} 예정입니다.";
         }
 
-        return $"{r.Position}선생님 {dutyTypeText} {r.TimeStart} ~ {r.TimeEnd}";
+        return isToday
+            ? $"{r.Position}선생님 {dutyTypeText} {r.TimeStart} ~ {r.TimeEnd}"
+            : $"내일 {r.Position}선생님 {dutyTypeText} 예정 ({r.TimeStart} ~ {r.TimeEnd})";
     }
 
     /// <summary>같은 날 조건에 맞는 기록이 여러 건(예: 교장·교감 동시 출장)이면 각 기록의
