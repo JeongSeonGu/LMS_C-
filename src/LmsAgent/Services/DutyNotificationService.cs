@@ -101,6 +101,21 @@ public sealed class DutyNotificationService : IDisposable
                 .ToList();
             var tomorrowHits = records.Where(r => Matches(r, tomorrow)).ToList();
 
+            // "오늘인데 내일로 표시된다"는 보고가 있었으나 로직상으로는 재현하지 못해,
+            // 다음에 다시 발생했을 때 실제 서버 데이터로 원인을 바로 확인할 수 있도록 매번
+            // 조회 결과를 남긴다("실시간 연동 로그 열기"에서 확인). 문제가 더 이상
+            // 재현되지 않으면 이 로그는 지워도 된다.
+            RealtimeLog.Write(
+                $"[복무배너] 오늘={DateOnly.FromDateTime(today)} 내일={DateOnly.FromDateTime(tomorrow)} " +
+                $"지금={DateTime.Now:HH:mm:ss} 대상={string.Join(",", watchedPositions)} " +
+                $"조회건수={records.Count} 오늘적중={todayHits.Count} 내일적중={tomorrowHits.Count}");
+            foreach (var r in records)
+            {
+                RealtimeLog.Write(
+                    $"[복무배너]   date={r.Date}(파싱={r.DateValue?.ToString() ?? "실패"}) {r.Position} {r.DutyType} " +
+                    $"{r.TimeStart}~{r.TimeEnd} note={r.Note}");
+            }
+
             if (todayHits.Count > 0)
             {
                 ShowBanner(BuildDutyMessage(todayHits, isToday: true), urgent: true);

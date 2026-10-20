@@ -42,7 +42,21 @@ public sealed class OptionsForm : Form
         HideSelection = false,
     };
 
-    private readonly Panel _pageHost = new()
+    // 일반 Panel은 창을 늘리거나 최대화할 때, 자식 UserControl(각 설정 페이지)의 이전
+    // 화면이 완전히 지워지지 않고 일부가 "유령처럼" 남아 보이는 경우가 있었다(예: 네트워크
+    // 페이지의 입력창 하나가 다른 위치에 겹쳐 보임) — 이 창이 크기 조절 가능(Sizable)한
+    // 몇 안 되는 창 중 하나라 특히 두드러진다. OptimizedDoubleBuffer로 다시 그릴 때 겹치는
+    // 부분을 먼저 오프스크린 버퍼에 합성한 뒤 한 번에 그리도록 해서 이 잔상을 없앤다
+    // (WorkJournalForm의 DoubleBufferedFlowLayoutPanel과 같은 해법).
+    private sealed class DoubleBufferedPanel : Panel
+    {
+        public DoubleBufferedPanel()
+        {
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
+        }
+    }
+
+    private readonly Panel _pageHost = new DoubleBufferedPanel
     {
         Dock = DockStyle.Fill,
         Padding = new Padding(12, 0, 0, 0),
@@ -60,6 +74,7 @@ public sealed class OptionsForm : Form
         Text = "환경설정";
         Icon = AppIconProvider.Icon;
         UiTheme.ApplyForm(this);
+        DoubleBuffered = true;
         FormBorderStyle = FormBorderStyle.Sizable;
         MaximizeBox = true;
         MinimizeBox = false;

@@ -17,7 +17,7 @@ public sealed class LoginForm : Form
     private readonly SessionManager _session;
 
     private readonly Panel _header = new() { Dock = DockStyle.Top, Height = 36, BackColor = Color.White };
-    private readonly Panel _body = new() { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(40, 16, 40, 0) };
+    private readonly Panel _body = new() { Dock = DockStyle.Fill, BackColor = Color.White };
     private readonly Panel _footer = new() { Dock = DockStyle.Bottom, Height = 44, BackColor = UiTheme.ModernBackground };
 
     private readonly TextBox _idBox = new() { BorderStyle = BorderStyle.None, Font = UiTheme.ModernBodyFont, ForeColor = UiTheme.ModernText };
@@ -139,11 +139,20 @@ public sealed class LoginForm : Form
         UiTheme.EnableDragMove(titleLabel, this);
     }
 
+    // ⚠ Panel.Padding은 Dock/Anchor/Flow로 배치되는 자식에게만 적용되고, 아래처럼 Left/Top을
+    // 직접 지정하는 자식에게는 전혀 영향을 주지 않는다(조용히 무시된다) — 그래서 _body에
+    // Padding(40, 16, ...)을 줘도 Left=0인 컨트롤은 패딩 없이 진짜 왼쪽 끝(x=0)에 붙어
+    // 전체 내용이 왼쪽으로 쏠려 보였다. Padding에 기대지 않고, 아래 모든 Left 값에
+    // ContentLeft(=40)를 직접 더해 오프셋을 준다.
+    private const int ContentLeft = 40;
+    private const int ContentTop = 16;
+    private const int ContentWidth = 320;
+
     private void BuildBody()
     {
-        var y = 0;
+        var y = ContentTop;
 
-        var iconBadge = new Panel { Left = 0, Top = y, Width = 48, Height = 48, BackColor = UiTheme.ModernAccent };
+        var iconBadge = new Panel { Left = ContentLeft, Top = y, Width = 48, Height = 48, BackColor = UiTheme.ModernAccent };
         UiTheme.ApplyRoundedRegion(iconBadge, 12);
         iconBadge.Controls.Add(new Label
         {
@@ -154,24 +163,24 @@ public sealed class LoginForm : Form
 
         var titleLabel = new Label
         {
-            Left = 0, Top = y, AutoSize = true, Text = "교무학사 LMS 로그인", Font = UiTheme.ModernTitleFont, ForeColor = UiTheme.ModernText,
+            Left = ContentLeft, Top = y, AutoSize = true, Text = "교무학사 LMS 로그인", Font = UiTheme.ModernTitleFont, ForeColor = UiTheme.ModernText,
         };
         _body.Controls.Add(titleLabel);
         y += 30;
 
         var subtitleLabel = new Label
         {
-            Left = 0, Top = y, Width = 320, Height = 38, Text = "웹 LMS와 같은 계정으로 로그인하면\n일정·알림이 이 PC로 자동 연동됩니다.",
+            Left = ContentLeft, Top = y, Width = ContentWidth, Height = 38, Text = "웹 LMS와 같은 계정으로 로그인하면\n일정·알림이 이 PC로 자동 연동됩니다.",
             Font = UiTheme.ModernSmallFont, ForeColor = UiTheme.ModernTextMuted,
         };
         _body.Controls.Add(subtitleLabel);
         y += 38 + 28;
 
-        var idLabel = new Label { Left = 0, Top = y, AutoSize = true, Text = "아이디", Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernText };
+        var idLabel = new Label { Left = ContentLeft, Top = y, AutoSize = true, Text = "아이디", Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernText };
         _body.Controls.Add(idLabel);
         y += 22;
 
-        var idWrap = new Panel { Left = 0, Top = y, Width = 320, Height = 40, BackColor = UiTheme.ModernFieldBorder, Padding = new Padding(1) };
+        var idWrap = new Panel { Left = ContentLeft, Top = y, Width = ContentWidth, Height = 40, BackColor = UiTheme.ModernFieldBorder, Padding = new Padding(1) };
         _idBox.Dock = DockStyle.Fill;
         _idBox.BackColor = Color.White;
         var idInner = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(11, 11, 11, 0) };
@@ -180,13 +189,13 @@ public sealed class LoginForm : Form
         _body.Controls.Add(idWrap);
         y += 40 + 16;
 
-        var pwLabel = new Label { Left = 0, Top = y, AutoSize = true, Text = "비밀번호", Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernText };
+        var pwLabel = new Label { Left = ContentLeft, Top = y, AutoSize = true, Text = "비밀번호", Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernText };
         _body.Controls.Add(pwLabel);
         y += 22;
 
-        _passwordWrap.Left = 0;
+        _passwordWrap.Left = ContentLeft;
         _passwordWrap.Top = y;
-        _passwordWrap.Width = 320;
+        _passwordWrap.Width = ContentWidth;
         _passwordWrap.Padding = new Padding(2);
         var pwInner = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
         _passwordBox.Left = 10;
@@ -211,13 +220,13 @@ public sealed class LoginForm : Form
         _body.Controls.Add(_passwordWrap);
         y += 40 + 4;
 
-        _capsLockWarning.Left = 0;
+        _capsLockWarning.Left = ContentLeft;
         _capsLockWarning.Top = y;
         _body.Controls.Add(_capsLockWarning);
         _passwordBox.KeyUp += (_, _) => UpdateCapsLockWarning();
         y += 22;
 
-        _saveIdBox.Left = 0;
+        _saveIdBox.Left = ContentLeft;
         _saveIdBox.Top = y;
         _body.Controls.Add(_saveIdBox);
 
@@ -225,27 +234,27 @@ public sealed class LoginForm : Form
         {
             AutoSize = true, Top = y, Text = "비밀번호를 잊으셨나요?", Font = UiTheme.ModernSmallFont, LinkColor = UiTheme.ModernAccent,
         };
-        forgotLink.Left = 320 - forgotLink.PreferredWidth;
+        forgotLink.Left = ContentLeft + ContentWidth - forgotLink.PreferredWidth;
         forgotLink.LinkClicked += (_, _) =>
             _statusLabel.Text = "비밀번호 재설정은 교무학사 웹 LMS 로그인 화면에서 진행해주세요.";
         _body.Controls.Add(forgotLink);
         y += 26;
 
-        _autoLoginBox.Left = 0;
+        _autoLoginBox.Left = ContentLeft;
         _autoLoginBox.Top = y;
         _body.Controls.Add(_autoLoginBox);
         y += 26 + 10;
 
-        _loginButton.Left = 0;
+        _loginButton.Left = ContentLeft;
         _loginButton.Top = y;
-        _loginButton.Width = 320;
+        _loginButton.Width = ContentWidth;
         UiTheme.StyleModernPrimaryButton(_loginButton);
         _body.Controls.Add(_loginButton);
         y += 48 + 12;
 
-        _statusLabel.Left = 0;
+        _statusLabel.Left = ContentLeft;
         _statusLabel.Top = y;
-        _statusLabel.Width = 320;
+        _statusLabel.Width = ContentWidth;
         _statusLabel.Height = FormHeight - 36 - 44 - 16 - y;
         _body.Controls.Add(_statusLabel);
     }

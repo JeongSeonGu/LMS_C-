@@ -85,6 +85,16 @@ public sealed class WorkJournalService : IDisposable
             _form.Show();
         }
 
+        // 로그인 직후(OnSessionChanged)뿐 아니라, 이미 로그인된 상태에서 환경설정에서 이
+        // 기능을 막 켰거나 프로그램을 다시 시작했을 때도(= 이 메서드가 호출되는 모든
+        // 경우) 저장된 메모가 있으면 이전 위치 그대로 함께 나타나야 한다 — 예전에는
+        // 로그인 이벤트가 발생할 때만 복원해서, 이미 로그인된 채로 옵션을 켠 경우에는
+        // 🗒 버튼을 한 번 더 눌러야만 메모가 보였다.
+        if (_settings.TaskJournalEnabled && _session.IsLoggedIn)
+        {
+            _stickyNotes.RestoreIfAny();
+        }
+
         _timer.Start();
         _ = RefreshAsync();
     }

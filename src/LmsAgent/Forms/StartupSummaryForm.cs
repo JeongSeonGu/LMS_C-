@@ -85,7 +85,7 @@ public sealed class StartupSummaryForm : Form
             TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(14, 0, 0, 0),
         };
 
-        var closeIconButton = new Button { Width = 44, Height = 36, Text = "×", Font = new Font(UiTheme.BaseFont.FontFamily, 12F, FontStyle.Bold), Margin = new Padding(0) };
+        var closeIconButton = new Button { Dock = DockStyle.Right, Width = 44, Height = 36, Text = "×", Font = new Font(UiTheme.BaseFont.FontFamily, 12F, FontStyle.Bold), Margin = new Padding(0) };
         UiTheme.StyleModernWindowButton(closeIconButton, isClose: true);
         closeIconButton.Click += (_, _) => Close();
 
@@ -108,8 +108,11 @@ public sealed class StartupSummaryForm : Form
 
     private void BuildFooter()
     {
+        // ⚠ Panel.Padding은 Left/Top을 직접 지정하는(Dock/Anchor=Fill이 아닌) 자식에게는
+        // 적용되지 않는다 — _footer의 Padding(20, 0, ...)을 쓰려면 아래처럼 20을 직접
+        // 더해야 한다(LoginForm.BuildBody와 같은 문제, 같은 해법).
         _dontShowTodayBox.Anchor = AnchorStyles.Left;
-        _dontShowTodayBox.Location = new Point(0, 14);
+        _dontShowTodayBox.Location = new Point(20, 14);
 
         UiTheme.StyleModernOutlineButton(_openMainButton);
         UiTheme.StyleModernPrimaryButton(_closeButton);
@@ -209,17 +212,19 @@ public sealed class StartupSummaryForm : Form
 
     private void AddEmptyState(string message)
     {
-        var card = new Panel
-        {
-            Width = 392, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(16, 12, 16, 12), Margin = new Padding(0, 0, 0, 12),
-        };
+        // ⚠ Panel.Padding은 Left/Top을 직접 지정하는 자식에게는 적용되지 않으므로(다른 곳과
+        // 같은 문제), label을 (16, 12)에 직접 배치하고 card 높이도 label 크기를 보고 직접
+        // 계산한다 — AutoSize=true는 이런 비도킹 자식 기준으로는 정확히 맞지 않는다.
+        var label = new Label { Left = 16, Top = 12, AutoSize = true, Text = message, Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernTextMuted };
+
+        var card = new Panel { Width = 392, Margin = new Padding(0, 0, 0, 12) };
         card.Paint += (_, e) =>
         {
             using var pen = new Pen(UiTheme.ModernFieldBorder) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash };
             e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
         };
-        card.Controls.Add(new Label { AutoSize = true, Text = message, Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernTextMuted });
+        card.Controls.Add(label);
+        card.Height = label.Bottom + 12;
         _content.Controls.Add(card);
     }
 

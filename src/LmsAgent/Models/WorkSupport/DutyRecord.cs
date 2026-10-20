@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace LmsAgent.Models.WorkSupport;
@@ -40,7 +41,15 @@ public sealed class DutyRecord
     [JsonPropertyName("note")]
     public string? Note { get; set; }
 
-    public DateOnly? DateValue => DateOnly.TryParse(Date, out var d) ? d : null;
+    /// <summary>"오늘 대신 내일로 표시된다"는 보고가 있어, 실행 PC의 지역 설정(culture)에
+    /// 영향을 받는 <c>DateOnly.TryParse(Date, ...)</c> 대신 "yyyy-MM-dd" 형식을 명시해서
+    /// 파싱합니다 — 지역 설정에 따라 "yyyy-MM-dd"가 월·일 순서를 다르게 해석할 가능성을
+    /// 원천적으로 없앱니다. 형식이 안 맞으면(서버가 다른 형식을 보냈다면) null이 되어
+    /// 당일·내일 어느 쪽에도 매칭되지 않습니다(틀린 날짜로 잘못 매칭되는 것보다 안전).</summary>
+    public DateOnly? DateValue =>
+        DateOnly.TryParseExact(Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? d
+            : null;
 
     /// <summary>시간이 없으면(TimeStart/TimeEnd 모두 null) 종일 기록입니다.</summary>
     public bool IsAllDay => string.IsNullOrWhiteSpace(TimeStart) && string.IsNullOrWhiteSpace(TimeEnd);
