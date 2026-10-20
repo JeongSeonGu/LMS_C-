@@ -178,21 +178,7 @@ public sealed class TrayApplicationContext : ApplicationContext
                 return;
             }
 
-            if (_trayControlPanel is { IsDisposed: false })
-            {
-                if (_trayControlPanel.WindowState == FormWindowState.Minimized)
-                {
-                    _trayControlPanel.WindowState = FormWindowState.Normal;
-                }
-
-                _trayControlPanel.Activate();
-                return;
-            }
-
-            _trayControlPanel = new TrayControlPanelForm(menu, _session, OnLogoutRequested);
-            _trayControlPanel.FormClosed += (_, _) => _trayControlPanel = null;
-            _trayControlPanel.Show();
-            _trayControlPanel.Activate();
+            OpenTrayControlPanel();
         };
 
         _wsClient.Start();
@@ -204,6 +190,45 @@ public sealed class TrayApplicationContext : ApplicationContext
         _sessionWatcherService.Start();
         _workJournalService.ApplySettings();
         RegisterHotkeys();
+
+        _ = TryAutoLoginAsync();
+    }
+
+    /// <summary>환경설정(로그인 창)에서 "Windows 시작 시 자동 로그인"을 켜둔 경우, 프로그램이
+    /// 뜰 때(= Windows 시작 시 자동 실행이 함께 켜져 있다면 Windows 시작 시) 로그인 창을
+    /// 띄우지 않고 저장해 둔 아이디·비밀번호로 곧바로 로그인한다. 비밀번호는 DPAPI로
+    /// 암호화해 저장했으므로(<see cref="DeviceTokenProtector"/>), 다른 PC·계정으로 설정
+    /// 파일만 복사된 경우에는 복호화가 실패해 조용히 건너뛴다 — 이 경우 사용자가 트레이
+    /// 메뉴에서 평소처럼 수동으로 로그인하면 된다.</summary>
+    private async Task TryAutoLoginAsync()
+    {
+        if (!_settings.AutoLoginEnabled || string.IsNullOrWhiteSpace(_settings.SavedLoginId))
+        {
+            return;
+        }
+
+        var password = DeviceTokenProtector.Unprotect(_settings.AutoLoginProtectedPassword);
+        if (string.IsNullOrEmpty(password))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _api.LoginAsync(_settings.SavedLoginId!, password);
+            if (!result.Ok || result.Data?.User is null)
+            {
+                return; // 비밀번호가 바뀌는 등으로 실패하면 조용히 건너뛰고, 평소처럼 수동 로그인하게 둔다.
+            }
+
+            _session.SetSession(result.Data.User);
+            await _session.RefreshDepartmentContextAsync(_api);
+            RunPostLoginSideEffects();
+        }
+        catch
+        {
+            // 네트워크 오류 등 자동 로그인 실패는 조용히 무시한다.
+        }
     }
 
     /// <summary>단축키 설정이 바뀔 때(환경설정 저장 시)마다 전부 해제 후 다시 등록합니다.</summary>
@@ -493,6 +518,16 @@ public sealed class TrayApplicationContext : ApplicationContext
 
         await _api.LogoutAsync();
         _session.Clear();
+
+        // 명시적으로 로그아웃했는데 다음 실행 때 자동 로그인으로 바로 다시 로그인되면
+        // 로그아웃한 의미가 없다(공용 PC에서 자리를 비우기 전 로그아웃하는 경우 등) —
+        // 자동 로그인을 켜둔 상태였다면 함께 끄고 저장해 둔 암호화 비밀번호도 지운다.
+        if (_settings.AutoLoginEnabled)
+        {
+            _settings.AutoLoginEnabled = false;
+            _settings.AutoLoginProtectedPassword = null;
+            SettingsStore.Save(_settings);
+        }
     }
 
     /// <summary>
@@ -541,14 +576,28 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     private void OnLoginClicked(object? sender, EventArgs e)
     {
-        using var form = new LoginForm(_api, _session, _settings.SavedLoginId);
+        using var form = new LoginForm(_api, _session, _settings.SavedLoginId, _settings.AutoLoginEnabled, _settings.SchoolName);
         if (form.ShowDialog() != DialogResult.OK)
         {
             return;
         }
 
-        _settings.SavedLoginId = form.SaveLoginId ? form.LoginId : null;
+        // 자동 로그인을 켜두면 아이디 저장 체크 여부와 무관하게 아이디를 함께 저장한다
+        // (아이디 없이는 다음 실행 때 자동 로그인을 할 수 없으므로).
+        _settings.SavedLoginId = (form.SaveLoginId || form.AutoLoginEnabled) ? form.LoginId : null;
+        _settings.AutoLoginEnabled = form.AutoLoginEnabled;
+        _settings.AutoLoginProtectedPassword = form.AutoLoginEnabled
+            ? DeviceTokenProtector.Protect(form.EnteredPassword)
+            : null;
 
+        RunPostLoginSideEffects();
+    }
+
+    /// <summary>수동 로그인(<see cref="OnLoginClicked"/>)과 자동 로그인(<see cref="TryAutoLoginAsync"/>)
+    /// 성공 뒤 공통으로 해야 하는 일들 — 학교명 채우기, 설정 저장, 각종 서비스 갱신, 첫 시작
+    /// 알림 모달 표시.</summary>
+    private void RunPostLoginSideEffects()
+    {
         // 최초 로그인 시 학교명이 비어 있으면 서버에 등록된 학교명으로 채워준다.
         var schoolName = _session.Profile?.SchoolName;
         if (string.IsNullOrWhiteSpace(_settings.SchoolName) && !string.IsNullOrWhiteSpace(schoolName))
@@ -566,7 +615,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         var today = DateTime.Today.ToString("yyyy-MM-dd");
         if (_settings.ShowStartupNoticeModal && _settings.StartupNoticeSuppressedDate != today)
         {
-            using var summary = new StartupSummaryForm(_api);
+            using var summary = new StartupSummaryForm(_api, _session, OpenTrayControlPanel);
             summary.ShowDialog();
 
             if (summary.SuppressToday)
@@ -575,6 +624,28 @@ public sealed class TrayApplicationContext : ApplicationContext
                 SettingsStore.Save(_settings);
             }
         }
+    }
+
+    /// <summary>트레이 아이콘 왼쪽 클릭(<see cref="TrayControlPanelForm"/>)과, 오늘의 알림
+    /// 팝업의 "메인 창 열기" 버튼이 공유하는 열기 로직. 이미 열려 있으면 새로 만들지 않고
+    /// 기존 창을 앞으로 가져온다.</summary>
+    private void OpenTrayControlPanel()
+    {
+        if (_trayControlPanel is { IsDisposed: false })
+        {
+            if (_trayControlPanel.WindowState == FormWindowState.Minimized)
+            {
+                _trayControlPanel.WindowState = FormWindowState.Normal;
+            }
+
+            _trayControlPanel.Activate();
+            return;
+        }
+
+        _trayControlPanel = new TrayControlPanelForm((ContextMenuStrip)_trayIcon.ContextMenuStrip!, _session, OnLogoutRequested);
+        _trayControlPanel.FormClosed += (_, _) => _trayControlPanel = null;
+        _trayControlPanel.Show();
+        _trayControlPanel.Activate();
     }
 
     private void OnUserInfoClicked(object? sender, EventArgs e)

@@ -7,24 +7,33 @@ namespace LmsAgent.Forms;
 
 /// <summary>
 /// 트레이 아이콘을 왼쪽 클릭했을 때 뜨는 창입니다. 오른쪽 클릭 시 나오는 ContextMenuStrip과
-/// 완전히 같은 메뉴 구성을, 일반 윈도우 프로그램처럼 화면 위쪽 가운데에 뜨는 flat 스타일
-/// 창(최대 1024×768)으로 다시 보여줍니다 — 왼쪽에 아이콘 사이드바(카테고리), 오른쪽에 그
-/// 카테고리의 버튼들을 보여주는 구성입니다. 각 항목의 실제 동작은 여전히 원본
-/// ContextMenuStrip(TrayApplicationContext)이 갖고 있으므로, 이 창은 그 항목의
+/// 완전히 같은 메뉴 구성을, 네이비 사이드바 + 파란색 강조색의 모던 "메인 창" 디자인으로
+/// 다시 보여줍니다 — 왼쪽에 네이비 사이드바(카테고리), 오른쪽에 그 카테고리의 타일들을
+/// 보여주는 구성입니다. 각 항목의 실제 동작은 여전히 원본 ContextMenuStrip
+/// (TrayApplicationContext)이 갖고 있으므로, 이 창은 그 항목의
 /// <see cref="ToolStripItem.PerformClick"/>을 그대로 호출할 뿐 별도의 로직을 갖지 않습니다
 /// — 메뉴 구성이 바뀌어도 이 창을 따로 손볼 필요가 없습니다. 이미 열려 있으면 새로 만들지
 /// 않고 기존 창을 앞으로 가져오는 것은 <see cref="LmsAgent.App.TrayApplicationContext"/>의
 /// 몫입니다(이 클래스는 자기 자신이 중복 실행되었는지는 알 수 없습니다).
+///
+/// 사이드바의 "오늘 한눈에" 같은 새 대시보드 페이지는 이 창에 없습니다 — 아직 그 데이터를
+/// 모아 보여줄 기능 자체가 없어서, 실제 메뉴 항목으로 존재하는 카테고리만 그대로
+/// 보여줍니다(목업과 달리 사이드바 항목 구성은 메뉴 그대로입니다).
 /// </summary>
 public sealed class TrayControlPanelForm : Form
 {
-    private readonly Panel _header = new() { Dock = DockStyle.Top, Height = 44, BackColor = UiTheme.Sky };
-    private readonly Panel _sidebar = new() { Dock = DockStyle.Left, Width = 208, BackColor = UiTheme.SkyDark };
-    private readonly Panel _statusBar = new() { Dock = DockStyle.Bottom, Height = 30, BackColor = UiTheme.SkyPale };
+    private readonly Panel _header = new() { Dock = DockStyle.Top, Height = 40, BackColor = Color.White };
+    private readonly FlowLayoutPanel _sidebar = new()
+    {
+        Dock = DockStyle.Left, Width = 232, BackColor = UiTheme.ModernNavy,
+        FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true,
+        Padding = new Padding(12, 16, 12, 16),
+    };
+    private readonly Panel _statusBar = new() { Dock = DockStyle.Bottom, Height = 28, BackColor = Color.White };
 
     private readonly Label _contentTitle = new()
     {
-        Dock = DockStyle.Top, Height = 40, Font = UiTheme.TitleFont, ForeColor = UiTheme.SkyDark,
+        Dock = DockStyle.Top, Height = 40, Font = UiTheme.ModernHeadlineFont, ForeColor = UiTheme.ModernText,
         Padding = new Padding(0, 4, 0, 8),
     };
 
@@ -39,19 +48,23 @@ public sealed class TrayControlPanelForm : Form
     private const int TileWidth = 200;
     private const int TileHeight = 130;
 
+    // 사이드바(232px) 안쪽에서 버튼/구분선이 실제로 차지할 수 있는 폭. 사이드바 자체의
+    // Padding(좌우 12px씩)과 각 항목의 Margin(좌우 4px씩)을 미리 빼둔 값이다 — 이 둘을
+    // 감안하지 않고 "_sidebar.Width - 24"만 쓰면 항목이 Margin만큼 오른쪽으로 넘쳐서
+    // 가로 스크롤이 생긴다.
+    private const int SidebarItemWidth = 232 - 24 - 8;
+
     private readonly Panel _contentHost = new() { Dock = DockStyle.Fill, BackColor = UiTheme.Surface };
 
     private Button? _selectedNavButton;
-    private bool _dragging;
-    private Point _dragStart;
     private int _actionWidth = 380;
 
     private readonly SessionManager _session;
     private readonly Action _onLogout;
 
-    /// <param name="session">헤더에 로그인 중인 ID/이름을 보여주기 위한 읽기 전용 참조입니다
-    /// (이 창을 여는 시점의 스냅샷 — 다른 패널들과 같은 규칙).</param>
-    /// <param name="onLogout">헤더의 "로그아웃" 버튼을 눌렀을 때 실행할 동작. 실제 로그아웃
+    /// <param name="session">사이드바 위쪽 아바타·이름과 로그아웃 버튼 표시 여부를 위한
+    /// 읽기 전용 참조입니다(이 창을 여는 시점의 스냅샷 — 다른 패널들과 같은 규칙).</param>
+    /// <param name="onLogout">사이드바의 "로그아웃" 버튼을 눌렀을 때 실행할 동작. 실제 로그아웃
     /// 처리(서버 통보 + 로컬 세션 정리)는 <see cref="LmsAgent.App.TrayApplicationContext"/>가
     /// 갖고 있으므로, 이 창은 다른 메뉴 항목들과 마찬가지로 호출만 위임합니다.</param>
     public TrayControlPanelForm(ContextMenuStrip menu, SessionManager session, Action onLogout)
@@ -62,8 +75,9 @@ public sealed class TrayControlPanelForm : Form
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = false;
-        BackColor = UiTheme.Border; // 바깥쪽 얇은 테두리처럼 보이는 배경색
+        BackColor = UiTheme.ModernFieldBorder; // 바깥쪽 얇은 테두리처럼 보이는 배경색
         Padding = new Padding(1);
+        Font = UiTheme.ModernBodyFont;
 
         // 학사달력 배경화면(월 단위)과 같은 규칙 — 최대 1024×768, 화면보다 작은 모니터에서는
         // 그 작업 영역에 맞춘다. 화면 가운데가 아니라 "위쪽"에 띄워서, 트레이 아이콘을 눌렀을
@@ -97,114 +111,41 @@ public sealed class TrayControlPanelForm : Form
 
     private void BuildHeader()
     {
-        var titleLabel = new Label
+        var logoHost = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
-            Text = "📌 LMS 연동 프로그램",
-            ForeColor = Color.White,
-            Font = UiTheme.BoldFont,
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(16, 0, 0, 0),
+            Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(14, 10, 0, 0),
         };
 
-        var closeButton = new Button
+        var logo = new Panel { Width = 20, Height = 20, BackColor = UiTheme.ModernAccent, Margin = new Padding(0, 0, 10, 0) };
+        UiTheme.ApplyRoundedRegion(logo, 6);
+        logoHost.Controls.Add(logo);
+        logoHost.Controls.Add(new Label
         {
-            Width = 44,
-            Height = _header.Height,
-            Text = "×",
-            FlatStyle = FlatStyle.Flat,
-            ForeColor = Color.White,
-            Font = new Font(UiTheme.BaseFont.FontFamily, 13F, FontStyle.Bold),
-            Margin = new Padding(0),
-        };
-        closeButton.FlatAppearance.BorderSize = 0;
-        closeButton.FlatAppearance.MouseOverBackColor = UiTheme.SkyDark;
+            AutoSize = true, Text = "LMS 연동 프로그램", Font = UiTheme.ModernLabelBoldFont, ForeColor = UiTheme.ModernText, Margin = new Padding(0, 2, 0, 0),
+        });
+
+        var minimizeButton = new Button { Width = 44, Height = 40, Text = "─", Margin = new Padding(0) };
+        var closeButton = new Button { Width = 44, Height = 40, Text = "×", Font = new Font(UiTheme.BaseFont.FontFamily, 13F, FontStyle.Bold), Margin = new Padding(0) };
+        UiTheme.StyleModernWindowButton(minimizeButton);
+        UiTheme.StyleModernWindowButton(closeButton, isClose: true);
+        minimizeButton.Click += (_, _) => WindowState = FormWindowState.Minimized;
         closeButton.Click += (_, _) => Close();
 
-        // ⚠ Dock=Right인 컨트롤을 여러 개 만들면 "먼저 추가한 것이 진짜 가장자리를
-        // 차지한다"는 이 저장소의 다른 규칙(예: WorkJournalForm 헤더의 닫기/쪽지 버튼
-        // 2개)과 달리, 컨트롤이 3개 이상으로 늘어나면 그 순서가 어느 쪽으로 뒤집힐지
-        // 신뢰하기 어렵다는 걸 실제로 겪었다(로그인 정보·로그아웃 버튼을 추가했더니
-        // ×가 오히려 맨 왼쪽으로 밀려났다). 그래서 오른쪽에 들어갈 항목 전체를 FlowLayoutPanel
-        // 하나로 묶어 Dock=Right는 이 컨테이너 하나뿐이게 하고(모호할 게 없다), 그 안에서는
-        // FlowDirection.RightToLeft로 "먼저 추가한 항목이 진짜 오른쪽 끝"이 되도록 명시적으로
-        // 제어한다 — ×를 항상 제일 먼저 추가하므로 무슨 일이 있어도 가장 오른쪽에 남는다.
         var rightCluster = new FlowLayoutPanel
         {
-            Dock = DockStyle.Right,
-            FlowDirection = FlowDirection.RightToLeft,
-            WrapContents = false,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            BackColor = UiTheme.Sky,
+            Dock = DockStyle.Right, FlowDirection = FlowDirection.RightToLeft, WrapContents = false,
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, BackColor = Color.White,
         };
         rightCluster.Controls.Add(closeButton);
+        rightCluster.Controls.Add(minimizeButton);
 
-        // 로그인 중일 때만 ID/이름과 로그아웃 버튼을 보여준다(스냅샷 — 이 창이 열려 있는
-        // 동안 로그인 상태가 바뀌어도 다시 그리지 않는다, 하단 상태 표시줄과 같은 규칙).
-        if (_session.Profile is { } profile)
-        {
-            var logoutButton = new Button
-            {
-                Width = 84,
-                Height = _header.Height,
-                Text = "로그아웃",
-                FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.White,
-                BackColor = UiTheme.OrangeDark,
-                Font = UiTheme.BoldFont,
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0),
-            };
-            // 배경이 헤더와 똑같은 하늘색이면 버튼인지조차 알아보기 어려웠다 — 오렌지
-            // 채움색을 줘서 눈에 띄는 실제 버튼처럼 보이게 한다(이 앱의 "주요 동작" 강조색).
-            logoutButton.FlatAppearance.BorderSize = 0;
-            logoutButton.FlatAppearance.MouseOverBackColor = UiTheme.Orange;
-            logoutButton.Click += (_, _) =>
-            {
-                _onLogout();
-                Close();
-            };
-            rightCluster.Controls.Add(logoutButton);
-
-            // ⚠ AutoSize=true인 채로 Height까지 지정하면 Text를 설정하는 순간 AutoSize가
-            // Height를 다시 텍스트 한 줄 높이(~20px)로 덮어써서, FlowLayoutPanel 안에서
-            // 버튼들(44px)과 나란히 있을 때 위쪽으로 붕 떠 보인다 — AutoSize를 끄고
-            // Width/Height를 직접 고정한 뒤 TextAlign으로 세로 중앙 정렬한다.
-            var userInfoLabel = new Label
-            {
-                AutoSize = false,
-                Width = 220,
-                Height = _header.Height,
-                Text = $"ID: {profile.LoginId}   이름: {profile.Name}",
-                ForeColor = Color.White,
-                Font = UiTheme.BaseFont,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Margin = new Padding(0, 0, 16, 0),
-            };
-            rightCluster.Controls.Add(userInfoLabel);
-        }
-
-        _header.Controls.Add(titleLabel);
+        _header.Controls.Add(logoHost);
         _header.Controls.Add(rightCluster);
+        _header.Paint += (_, e) => e.Graphics.DrawLine(new Pen(UiTheme.ModernDivider), 0, _header.Height - 1, _header.Width, _header.Height - 1);
 
         // 테두리 없는 창이라 제목표시줄을 직접 드래그로 옮길 수 있게 한다.
-        void StartDrag(object? _, MouseEventArgs e) { _dragging = true; _dragStart = e.Location; }
-        void DoDrag(object? _, MouseEventArgs e)
-        {
-            if (_dragging)
-            {
-                Location = new Point(Location.X + e.X - _dragStart.X, Location.Y + e.Y - _dragStart.Y);
-            }
-        }
-        void EndDrag(object? _, MouseEventArgs e) => _dragging = false;
-
-        _header.MouseDown += StartDrag;
-        _header.MouseMove += DoDrag;
-        _header.MouseUp += EndDrag;
-        titleLabel.MouseDown += StartDrag;
-        titleLabel.MouseMove += DoDrag;
-        titleLabel.MouseUp += EndDrag;
+        UiTheme.EnableDragMove(_header, this);
+        UiTheme.EnableDragMove(logoHost, this);
     }
 
     /// <summary>연결 상태·라이센스 상태(Enabled=false인 항목)는 사이드바가 아니라 하단
@@ -226,24 +167,37 @@ public sealed class TrayControlPanelForm : Form
                 {
                     AutoSize = true,
                     Text = status.Text,
-                    ForeColor = UiTheme.TextSecondary,
+                    Font = UiTheme.ModernSmallFont,
+                    ForeColor = UiTheme.ModernTextMuted,
                     Margin = new Padding(0, 0, 24, 0),
                 });
             }
         }
 
         _statusBar.Controls.Add(flow);
+        _statusBar.Paint += (_, e) => e.Graphics.DrawLine(new Pen(UiTheme.ModernDivider), 0, 0, _statusBar.Width, 0);
     }
 
     private void BuildSidebar(ToolStripItemCollection items)
     {
+        BuildSidebarAvatar();
+
         Button? firstCategoryButton = null;
 
         foreach (ToolStripItem item in items)
         {
+            if (item is ToolStripSeparator)
+            {
+                _sidebar.Controls.Add(new Panel
+                {
+                    Width = SidebarItemWidth, Height = 1, BackColor = UiTheme.ModernNavyBorder, Margin = new Padding(4, 8, 4, 8),
+                });
+                continue;
+            }
+
             if (item is not ToolStripMenuItem { Enabled: true } menuItem)
             {
-                continue; // 구분선·비활성(상태) 항목은 사이드바에 넣지 않는다.
+                continue; // 비활성(상태) 항목은 사이드바에 넣지 않는다.
             }
 
             var nav = BuildNavButton(menuItem);
@@ -253,6 +207,24 @@ public sealed class TrayControlPanelForm : Form
             {
                 firstCategoryButton = nav;
             }
+        }
+
+        // 로그인 중일 때만, 목업처럼 사이드바 맨 아래에 로그아웃 버튼을 보여준다(실제 처리는
+        // TrayApplicationContext가 전달한 onLogout 콜백에 위임 — 다른 항목들과 같은 규칙).
+        if (_session.Profile is not null)
+        {
+            _sidebar.Controls.Add(new Panel
+            {
+                Width = SidebarItemWidth, Height = 1, BackColor = UiTheme.ModernNavyBorder, Margin = new Padding(4, 8, 4, 8),
+            });
+
+            var logoutButton = BuildPlainNavButton("로그아웃");
+            logoutButton.Click += (_, _) =>
+            {
+                _onLogout();
+                Close();
+            };
+            _sidebar.Controls.Add(logoutButton);
         }
 
         // 처음 열었을 때 빈 화면이 아니라, 첫 번째 카테고리를 기본으로 보여준다.
@@ -266,24 +238,44 @@ public sealed class TrayControlPanelForm : Form
         }
     }
 
+    private void BuildSidebarAvatar()
+    {
+        var host = new FlowLayoutPanel
+        {
+            Width = SidebarItemWidth, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(4, 0, 4, 16),
+        };
+
+        var profile = _session.Profile;
+        var initial = string.IsNullOrWhiteSpace(profile?.Name) ? "?" : profile.Name[..1];
+
+        var avatar = new Panel { Width = 40, Height = 40, BackColor = UiTheme.ModernNavyActive, Margin = new Padding(0, 0, 12, 0) };
+        UiTheme.ApplyRoundedRegion(avatar, 20);
+        avatar.Controls.Add(new Label
+        {
+            Dock = DockStyle.Fill, Text = initial, Font = UiTheme.ModernLabelBoldFont, ForeColor = Color.White, TextAlign = ContentAlignment.MiddleCenter,
+        });
+        host.Controls.Add(avatar);
+
+        var textStack = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1, Margin = new Padding(0, 2, 0, 0) };
+        textStack.Controls.Add(new Label
+        {
+            AutoSize = true, Text = profile is null ? "로그인 전" : $"{profile.Name} 선생님", Font = UiTheme.ModernLabelBoldFont, ForeColor = Color.White,
+        });
+        textStack.Controls.Add(new Label
+        {
+            AutoSize = true, Text = profile is null ? "" : $"{profile.LoginId} · {profile.SchoolName}", Font = UiTheme.ModernTinyFont, ForeColor = UiTheme.ModernNavyMuted,
+        });
+        host.Controls.Add(textStack);
+
+        _sidebar.Controls.Add(host);
+        _sidebar.Controls.Add(new Panel { Width = SidebarItemWidth, Height = 1, BackColor = UiTheme.ModernNavyBorder, Margin = new Padding(4, 0, 4, 12) });
+    }
+
     private Button BuildNavButton(ToolStripMenuItem menuItem)
     {
         var text = menuItem.Text?.Replace("...", "").TrimEnd() ?? "";
-        var button = new Button
-        {
-            Dock = DockStyle.Top,
-            Height = 48,
-            Text = $"{IconFor(text)}   {text}",
-            TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(20, 0, 0, 0),
-            FlatStyle = FlatStyle.Flat,
-            ForeColor = Color.White,
-            BackColor = UiTheme.SkyDark,
-            Font = UiTheme.BaseFont,
-            Cursor = Cursors.Hand,
-        };
-        button.FlatAppearance.BorderSize = 0;
-        button.FlatAppearance.MouseOverBackColor = UiTheme.Sky;
+        var button = BuildPlainNavButton($"{IconFor(text)}   {text}");
 
         if (menuItem.HasDropDownItems)
         {
@@ -306,15 +298,39 @@ public sealed class TrayControlPanelForm : Form
         return button;
     }
 
+    /// <summary>사이드바 메뉴 버튼 하나의 모던 스타일(둥근 모서리·네이비 배경·흰 글자)을
+    /// 만든다. 실제 동작은 호출자가 Click에 직접 붙인다.</summary>
+    private Button BuildPlainNavButton(string text)
+    {
+        var button = new Button
+        {
+            Width = SidebarItemWidth,
+            Height = 40,
+            Text = text,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Padding = new Padding(10, 0, 0, 0),
+            Margin = new Padding(4, 0, 4, 2),
+            FlatStyle = FlatStyle.Flat,
+            ForeColor = Color.White,
+            BackColor = UiTheme.ModernNavy,
+            Font = UiTheme.ModernBodyFont,
+            Cursor = Cursors.Hand,
+        };
+        button.FlatAppearance.BorderSize = 0;
+        button.FlatAppearance.MouseOverBackColor = UiTheme.ModernNavyActive;
+        UiTheme.ApplyRoundedRegion(button, 8);
+        return button;
+    }
+
     private void Select(Button nav)
     {
         if (_selectedNavButton is not null)
         {
-            _selectedNavButton.BackColor = UiTheme.SkyDark;
+            _selectedNavButton.BackColor = UiTheme.ModernNavy;
         }
 
         _selectedNavButton = nav;
-        nav.BackColor = UiTheme.OrangeDark;
+        nav.BackColor = UiTheme.ModernNavyActive;
     }
 
     private void ShowCategory(string title, ToolStripItemCollection children)

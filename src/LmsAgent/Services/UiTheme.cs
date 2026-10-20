@@ -6,35 +6,84 @@ using System.Windows.Forms;
 namespace LmsAgent.Services;
 
 /// <summary>
-/// 프로그램 전체에서 쓰는 공통 디자인 테마입니다. 밝은 하늘색을 기본색으로,
-/// 오렌지색을 주요 액션(등록/저장/로그인 등) 강조색으로 사용합니다.
+/// 프로그램 전체에서 쓰는 공통 디자인 테마입니다.
+///
+/// 2026-10 UI 전면 개편: 하늘색+오렌지 2색 테마를, 로그인·오늘의 알림·메인 창 목업에서
+/// 쓰인 네이비 사이드바 + 파란색 단일 강조색 디자인으로 바꿨습니다. 프로그램의 거의
+/// 모든 화면이 색상을 직접 지정하지 않고 이 클래스의 상수(Sky/Orange/...)와
+/// StyleXxx 헬퍼를 통해서만 참조하는 기존 관례 덕분에, 아래 팔레트 "값"만 새 디자인에
+/// 맞춰 바꾸는 것으로 거의 모든 화면이 한 번에 새 색으로 바뀝니다 — 상수 "이름"은
+/// (호출부 30여 곳을 전부 고치지 않도록) 그대로 두었습니다. Orange 계열과 Sky 계열이
+/// 이제 같은 파란색 계열을 가리키는 것은 실수가 아니라, 목업이 주요 액션(기존
+/// Orange 역할)과 강조/링크(기존 Sky 역할)에 같은 파란색 하나만 쓰는 "단일 강조색"
+/// 디자인이기 때문입니다.
 /// WinForms 기본 컨트롤 위에 색상·글꼴·여백을 통일해 적용하는 얇은 헬퍼 모음입니다.
 /// </summary>
 public static class UiTheme
 {
-    // ── 팔레트 ────────────────────────────────────────────────
-    public static readonly Color Sky = Color.FromArgb(41, 171, 226);
-    public static readonly Color SkyDark = Color.FromArgb(15, 133, 186);
-    public static readonly Color SkyLight = Color.FromArgb(224, 244, 253);
-    public static readonly Color SkyPale = Color.FromArgb(241, 250, 254);
+    // ── 팔레트(모던 네이비·블루 디자인) ──────────────────────
+    public static readonly Color Sky = Color.FromArgb(31, 95, 191);        // #1F5FBF
+    public static readonly Color SkyDark = Color.FromArgb(23, 74, 150);    // #174A96
+    public static readonly Color SkyLight = Color.FromArgb(234, 241, 252); // #EAF1FC
+    public static readonly Color SkyPale = Color.FromArgb(245, 247, 250);  // #F5F7FA
 
-    public static readonly Color Orange = Color.FromArgb(255, 141, 60);
-    public static readonly Color OrangeDark = Color.FromArgb(232, 111, 26);
-    public static readonly Color OrangeLight = Color.FromArgb(255, 231, 209);
+    public static readonly Color Orange = Color.FromArgb(31, 95, 191);        // #1F5FBF — Sky와 같은 단일 강조색
+    public static readonly Color OrangeDark = Color.FromArgb(23, 74, 150);    // #174A96
+    public static readonly Color OrangeLight = Color.FromArgb(234, 241, 252); // #EAF1FC
 
     public static readonly Color Background = SkyPale;
     public static readonly Color Surface = Color.White;
-    public static readonly Color Border = Color.FromArgb(214, 231, 240);
-    public static readonly Color TextPrimary = Color.FromArgb(38, 50, 56);
-    public static readonly Color TextSecondary = Color.FromArgb(112, 128, 136);
-    public static readonly Color Success = Color.FromArgb(43, 158, 111);
-    public static readonly Color Danger = Color.FromArgb(224, 86, 66);
+    public static readonly Color Border = Color.FromArgb(220, 226, 234);   // #DCE2EA
+    public static readonly Color TextPrimary = Color.FromArgb(27, 36, 48); // #1B2430
+    public static readonly Color TextSecondary = Color.FromArgb(91, 102, 118); // #5B6676
+    public static readonly Color Success = Color.FromArgb(21, 128, 61);    // #15803D
+    public static readonly Color Danger = Color.FromArgb(196, 43, 28);     // #C42B1C
+
+    // ── 모던 디자인 전용 추가 색상(네이비 사이드바 등, 위 공용 팔레트로는 못 담는 색) ──
+    public static readonly Color ModernNavy = Color.FromArgb(20, 33, 61);        // #14213D 사이드바 배경
+    public static readonly Color ModernNavyActive = Color.FromArgb(44, 74, 134); // #2C4A86 선택된 메뉴/아바타
+    public static readonly Color ModernNavyBorder = Color.FromArgb(38, 54, 89);  // #263659 사이드바 구분선
+    public static readonly Color ModernNavyMuted = Color.FromArgb(169, 180, 198); // #A9B4C6 사이드바 보조 텍스트
+
+    public static readonly Color ModernAccent = Color.FromArgb(31, 95, 191);       // #1F5FBF 주 강조색(파랑)
+    public static readonly Color ModernAccentHover = Color.FromArgb(23, 74, 150);  // #174A96
+    public static readonly Color ModernAccentTint = Color.FromArgb(47, 111, 207);  // #2F6FCF 강조 타일 아이콘 배경
+    public static readonly Color ModernAccentSoft = Color.FromArgb(234, 241, 252); // #EAF1FC 연한 배지/배경
+
+    public static readonly Color ModernBackground = Color.FromArgb(245, 247, 250); // #F5F7FA
+    public static readonly Color ModernCardBorder = Color.FromArgb(220, 226, 234); // #DCE2EA 카드 테두리
+    public static readonly Color ModernFieldBorder = Color.FromArgb(201, 209, 220); // #C9D1DC 입력창/창 테두리
+    public static readonly Color ModernDivider = Color.FromArgb(227, 232, 239);    // #E3E8EF
+    public static readonly Color ModernDividerLight = Color.FromArgb(238, 241, 245); // #EEF1F5
+
+    public static readonly Color ModernText = Color.FromArgb(27, 36, 48);        // #1B2430
+    public static readonly Color ModernTextMuted = Color.FromArgb(91, 102, 118); // #5B6676
+    public static readonly Color ModernIconMuted = Color.FromArgb(58, 70, 86);   // #3A4656 (창 버튼 아이콘)
+
+    public static readonly Color ModernSuccessDot = Color.FromArgb(21, 128, 61);  // #15803D
+    public static readonly Color ModernSuccessText = Color.FromArgb(21, 98, 47);  // #15622F
+    public static readonly Color ModernSuccessBg = Color.FromArgb(232, 245, 236); // #E8F5EC
+
+    public static readonly Color ModernWarnText = Color.FromArgb(154, 69, 8);   // #9A4508
+    public static readonly Color ModernWarnBg = Color.FromArgb(253, 243, 231);  // #FDF3E7
+
+    public static readonly Color ModernCloseHover = Color.FromArgb(196, 43, 28); // #C42B1C 창 버튼(×) 호버 배경
 
     // ── 글꼴 ──────────────────────────────────────────────────
     public static readonly Font BaseFont = new("맑은 고딕", 9.5F);
     public static readonly Font BoldFont = new("맑은 고딕", 9.5F, FontStyle.Bold);
     public static readonly Font TitleFont = new("맑은 고딕", 13F, FontStyle.Bold);
     public static readonly Font SubTitleFont = new("맑은 고딕", 10F, FontStyle.Bold);
+
+    // 모던 디자인 전용 글꼴(위 세 창에서만 사용).
+    public static readonly Font ModernTinyFont = new("맑은 고딕", 8F);
+    public static readonly Font ModernSmallFont = new("맑은 고딕", 8.5F);
+    public static readonly Font ModernBodyFont = new("맑은 고딕", 9.5F);
+    public static readonly Font ModernBodyBoldFont = new("맑은 고딕", 9.5F, FontStyle.Bold);
+    public static readonly Font ModernLabelBoldFont = new("맑은 고딕", 9F, FontStyle.Bold);
+    public static readonly Font ModernSubTitleFont = new("맑은 고딕", 10.5F, FontStyle.Bold);
+    public static readonly Font ModernTitleFont = new("맑은 고딕", 15F, FontStyle.Bold);
+    public static readonly Font ModernHeadlineFont = new("맑은 고딕", 13.5F, FontStyle.Bold);
 
     /// <summary>창 배경/기본 글꼴을 적용합니다. 각 폼 생성자 맨 앞에서 호출하세요.</summary>
     public static void ApplyForm(Form form)
@@ -169,14 +218,10 @@ public static class UiTheme
         button.Cursor = Cursors.Hand;
         button.TextAlign = ContentAlignment.MiddleCenter;
 
-        void ApplyRoundedRegion(object? sender, EventArgs e)
-        {
-            using var path = RoundedRectPath(button.ClientRectangle, cornerRadius);
-            button.Region = new Region(path);
-        }
+        void Reclip(object? sender, EventArgs e) => ApplyRoundedRegion(button, cornerRadius);
 
-        button.Resize += ApplyRoundedRegion;
-        ApplyRoundedRegion(button, EventArgs.Empty);
+        button.Resize += Reclip;
+        Reclip(button, EventArgs.Empty);
 
         // 마우스가 올라오면 배경이 진해지는 것과 함께 글자색도 흰색으로 바꿔 눈에 띄게 한다
         // (FlatAppearance.MouseOverBackColor만으로는 글자색까지는 못 바꾸므로 직접 처리).
@@ -184,7 +229,7 @@ public static class UiTheme
         button.MouseLeave += (_, _) => button.ForeColor = SkyDark;
     }
 
-    private static GraphicsPath RoundedRectPath(Rectangle bounds, int radius)
+    public static GraphicsPath RoundedRectPath(Rectangle bounds, int radius)
     {
         var path = new GraphicsPath();
         if (bounds.Width <= 0 || bounds.Height <= 0)
@@ -204,6 +249,105 @@ public static class UiTheme
         path.AddArc(arc, 90, 90);
         path.CloseFigure();
         return path;
+    }
+
+    /// <summary>컨트롤을 둥근 사각형으로 잘라낸다(배지·아이콘 배지·카드 등). 크기가 바뀔 때마다
+    /// 다시 호출해야 하면 Resize 이벤트에서 직접 불러 쓴다.</summary>
+    public static void ApplyRoundedRegion(Control control, int radius)
+    {
+        using var path = RoundedRectPath(control.ClientRectangle, radius);
+        control.Region = new Region(path);
+    }
+
+    /// <summary>테두리 없는 창(FormBorderStyle.None)에서, 지정한 컨트롤(제목표시줄 영역)을
+    /// 드래그하면 창이 함께 움직이도록 한다. 로그인 창·오늘의 알림·메인 창이 공통으로 쓴다.</summary>
+    public static void EnableDragMove(Control dragHandle, Form form)
+    {
+        var dragging = false;
+        var dragStart = Point.Empty;
+
+        dragHandle.MouseDown += (_, e) => { dragging = true; dragStart = e.Location; };
+        dragHandle.MouseMove += (_, e) =>
+        {
+            if (dragging)
+            {
+                form.Location = new Point(form.Location.X + e.X - dragStart.X, form.Location.Y + e.Y - dragStart.Y);
+            }
+        };
+        dragHandle.MouseUp += (_, _) => dragging = false;
+    }
+
+    /// <summary>로그인 창·오늘의 알림·메인 창에서 쓰는 꽉 찬 파랑 주요 액션 버튼
+    /// (모서리를 둥글게 잘라낸다).</summary>
+    public static void StyleModernPrimaryButton(Button button, int cornerRadius = 8)
+    {
+        button.UseVisualStyleBackColor = false;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 0;
+        button.FlatAppearance.MouseOverBackColor = ModernAccentHover;
+        button.FlatAppearance.MouseDownBackColor = ModernAccentHover;
+        button.BackColor = ModernAccent;
+        button.ForeColor = Color.White;
+        button.Font = ModernBodyBoldFont;
+        button.Cursor = Cursors.Hand;
+
+        void Reclip(object? sender, EventArgs e) => ApplyRoundedRegion(button, cornerRadius);
+        button.Resize += Reclip;
+        Reclip(button, EventArgs.Empty);
+    }
+
+    /// <summary>모던 디자인의 보조 액션 버튼(흰 배경, 옅은 회색 테두리).</summary>
+    public static void StyleModernOutlineButton(Button button, int cornerRadius = 8)
+    {
+        button.UseVisualStyleBackColor = false;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 1;
+        button.FlatAppearance.BorderColor = ModernFieldBorder;
+        button.FlatAppearance.MouseOverBackColor = ModernAccentSoft;
+        button.BackColor = Color.White;
+        button.ForeColor = ModernText;
+        button.Font = ModernBodyFont;
+        button.Cursor = Cursors.Hand;
+
+        void Reclip(object? sender, EventArgs e) => ApplyRoundedRegion(button, cornerRadius);
+        button.Resize += Reclip;
+        Reclip(button, EventArgs.Empty);
+    }
+
+    /// <summary>모던 창의 제목표시줄 아이콘 버튼(최소화/닫기). <paramref name="isClose"/>가
+    /// true면 호버 시 빨간 배경(윈도우 표준 닫기 동작)으로 바뀐다.</summary>
+    public static void StyleModernWindowButton(Button button, bool isClose = false)
+    {
+        button.UseVisualStyleBackColor = false;
+        button.FlatStyle = FlatStyle.Flat;
+        button.FlatAppearance.BorderSize = 0;
+        button.BackColor = Color.Transparent;
+        button.ForeColor = ModernIconMuted;
+        button.Cursor = Cursors.Hand;
+
+        if (isClose)
+        {
+            button.FlatAppearance.MouseOverBackColor = ModernCloseHover;
+            button.MouseEnter += (_, _) => button.ForeColor = Color.White;
+            button.MouseLeave += (_, _) => button.ForeColor = ModernIconMuted;
+        }
+        else
+        {
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(230, 234, 240); // #E6EAF0
+        }
+    }
+
+    /// <summary>모던 디자인의 둥근 알약(pill) 모양 상태 배지(연결됨/배지 카운트 등)를 그린다.</summary>
+    public static void StyleModernPill(Label label, Color background, Color foreColor, int cornerRadius = 10)
+    {
+        label.BackColor = background;
+        label.ForeColor = foreColor;
+        label.Font = ModernLabelBoldFont;
+        label.TextAlign = ContentAlignment.MiddleCenter;
+
+        void Reclip(object? sender, EventArgs e) => ApplyRoundedRegion(label, cornerRadius);
+        label.Resize += Reclip;
+        Reclip(label, EventArgs.Empty);
     }
 
     public static void StyleHeaderLabel(Label label)

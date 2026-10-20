@@ -106,6 +106,14 @@ public sealed class AppSettings
     public bool AutoStartWithWindows { get; set; } = true;
     public string? SavedLoginId { get; set; }
 
+    /// <summary>체크 시 비밀번호를 DPAPI(<see cref="DeviceTokenProtector"/>)로 암호화해 저장해뒀다가,
+    /// 다음 실행(Windows 시작 포함) 시 로그인 창을 띄우지 않고 자동으로 로그인까지 완료합니다.
+    /// 켜져 있으면 SavedLoginId도 항상 함께 저장됩니다(아이디 없이는 자동 로그인을 할 수 없으므로).</summary>
+    public bool AutoLoginEnabled { get; set; }
+
+    /// <summary>DeviceTokenProtector로 암호화된 비밀번호. AutoLoginEnabled가 꺼지면 함께 비웁니다.</summary>
+    public string? AutoLoginProtectedPassword { get; set; }
+
     /// <summary>
     /// 실시간 연동(웹소켓) 인증용 기기 식별자. 서버 관리자가 schoolwork_realtime_devices에
     /// 등록해 둔 device_id와 정확히 같아야 합니다(임의로 자동 생성하지 않습니다 — 관리자가
