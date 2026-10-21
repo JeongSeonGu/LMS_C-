@@ -11,13 +11,17 @@ using Timer = System.Windows.Forms.Timer;
 namespace LmsAgent.Services;
 
 /// <summary>
-/// 교감/교장의 출장·연가 등 복무 변동사항을 주기적으로 확인해
+/// 교장/교감 등 관리자(결재라인)의 출장·연가·조퇴 등 복무 변동사항을 주기적으로 확인해
 /// 하루 전에는 "예정" 배너를, 당일에는 "부재중" 배너를 화면 우측 상단에 표시합니다.
 /// (환경설정 &gt; 복무에서 대상과 출력 모니터를 지정합니다.)
 /// </summary>
 public sealed class DutyNotificationService : IDisposable
 {
-    private static readonly string[] NotifiableDutyTypes = { "출장", "연가" };
+    // 이 서비스가 지켜보는 직위(교장/교감/교무부장/행정실장)는 전부 결재라인과 직결된
+    // "관리자"이므로, 출장·연가뿐 아니라 조퇴도 부재 안내 대상에 포함한다 — 관리자의
+    // 부재는 결재가 필요한 업무에 영향을 주므로, 짧은 조퇴라도 알려주는 편이 낫다는
+    // 요청을 반영했다(예전에는 "하루 전 예고" 성격이 아니라는 이유로 조퇴를 제외했었다).
+    private static readonly string[] NotifiableDutyTypes = { "출장", "연가", "조퇴" };
 
     private readonly WorkSupportApiClient _api;
     private readonly AppSettings _settings;
