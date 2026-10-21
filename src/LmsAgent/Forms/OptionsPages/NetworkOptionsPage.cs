@@ -88,6 +88,18 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         _apiBaseUrlBox.Text = settings.ApiBaseUrlOverride ?? "";
         _workSupportPageUrlBox.Text = settings.WorkSupportPageUrl;
         _smartBoardPageUrlBox.Text = settings.SmartBoardPageUrl ?? "";
+
+        // ⚠ "교무업무 페이지"에 알 수 없는 네모가 겹쳐 보인다는 보고의 실제 원인 — 다른
+        // 컨트롤이 겹친 게 아니라, 이 주소들이 입력창 폭(260px)보다 길어서 원래 잘려
+        // 보이는 것인데, 전에 포커스가 가 있던 입력창은 커서가 있던 "끝부분"을 보여주려고
+        // 자동으로 오른쪽으로 스크롤돼 있는 상태였다(예: "...Work/WorkSupport/index.html"
+        // 처럼 글 중간이 둥둥 떠 있는 것처럼 보임). 글이 길어도 항상 "맨 앞"부터 보이도록
+        // 커서를 0번 위치로 되돌린다.
+        _serverUrlBox.Select(0, 0);
+        _updateUrlBox.Select(0, 0);
+        _apiBaseUrlBox.Select(0, 0);
+        _workSupportPageUrlBox.Select(0, 0);
+        _smartBoardPageUrlBox.Select(0, 0);
     }
 
     public void SaveTo(AppSettings settings)

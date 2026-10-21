@@ -42,8 +42,9 @@ public sealed class StartupSummaryForm : Form
     private readonly FlowLayoutPanel _badgeRow = new() { AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = true, Top = 0 };
 
     private readonly CheckBox _dontShowTodayBox = new() { AutoSize = true, Text = "오늘 하루 보지 않기", Font = UiTheme.ModernSmallFont, ForeColor = UiTheme.ModernText };
-    private readonly Button _openMainButton = new() { Width = 110, Height = 40, Text = "메인 창 열기" };
-    private readonly Button _closeButton = new() { Width = 70, Height = 40, Text = "확인" };
+    private readonly Button _openMainButton = new() { Width = 100, Height = 40, Text = "메인 창 열기" };
+    private readonly Button _dismissButton = new() { Width = 60, Height = 40, Text = "닫기" };
+    private readonly Button _closeButton = new() { Width = 60, Height = 40, Text = "확인" };
 
     public StartupSummaryForm(WorkSupportApiClient api, SessionManager session, Action openMainWindow)
     {
@@ -113,25 +114,41 @@ public sealed class StartupSummaryForm : Form
         // 더해야 한다(LoginForm.BuildBody와 같은 문제, 같은 해법).
         _dontShowTodayBox.Anchor = AnchorStyles.Left;
         _dontShowTodayBox.Location = new Point(20, 14);
+        _footer.Controls.Add(_dontShowTodayBox);
 
         UiTheme.StyleModernOutlineButton(_openMainButton);
+        UiTheme.StyleModernOutlineButton(_dismissButton);
         UiTheme.StyleModernPrimaryButton(_closeButton);
-        _openMainButton.Anchor = AnchorStyles.Right;
-        _closeButton.Anchor = AnchorStyles.Right;
-        _openMainButton.Top = 2;
-        _closeButton.Top = 2;
-        _closeButton.Left = FormWidth - 40 - _closeButton.Width;
-        _openMainButton.Left = _closeButton.Left - 8 - _openMainButton.Width;
+        _openMainButton.Margin = new Padding(8, 0, 0, 0);
+        _dismissButton.Margin = new Padding(8, 0, 0, 0);
+        _closeButton.Margin = new Padding(0);
 
-        _footer.Controls.Add(_dontShowTodayBox);
-        _footer.Controls.Add(_openMainButton);
-        _footer.Controls.Add(_closeButton);
+        // 버튼 폭을 직접 더해 Left 좌표를 계산하면(이전 버전) 체크박스 텍스트 길이에 따라
+        // 겹칠 수 있어, 이 저장소의 다른 창들과 같은 방식대로 FlowLayoutPanel(Dock=Right,
+        // RightToLeft)로 맡긴다 — 먼저 추가한 항목이 가장 오른쪽에 온다. 맨 오른쪽부터:
+        // 확인(주요 동작) - 닫기(요청대로 하단 오른쪽에 추가) - 메인 창 열기. 셋 다 이
+        // 창을 닫기만 하고(메인 창 열기는 추가로 메인 창도 연다), 어느 버튼을 눌러도
+        // 결과는 같다 — "확인"만으로 닫기 동작이 눈에 잘 안 띈다는 피드백에 따라 더 분명한
+        // "닫기" 라벨을 가진 버튼을 별도로 추가했다.
+        // _footer가 이미 Padding(20, 0, 20, 0)을 갖고 있고(Dock=Right인 이 패널은 그
+        // Padding을 그대로 받는다), 여기에 또 오른쪽 여백을 주면 이중으로 밀려나므로
+        // 위아래 살짝 정렬할 2px만 준다.
+        var rightCluster = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Right, FlowDirection = FlowDirection.RightToLeft, WrapContents = false,
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(0, 2, 0, 0),
+        };
+        rightCluster.Controls.Add(_closeButton);
+        rightCluster.Controls.Add(_dismissButton);
+        rightCluster.Controls.Add(_openMainButton);
+        _footer.Controls.Add(rightCluster);
 
         _openMainButton.Click += (_, _) =>
         {
             _openMainWindow();
             Close();
         };
+        _dismissButton.Click += (_, _) => Close();
         _closeButton.Click += (_, _) => Close();
     }
 

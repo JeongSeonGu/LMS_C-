@@ -70,12 +70,16 @@ public sealed class DutyBannerForm : Form
         }
     }
 
-    /// <param name="urgent">true면 "당일 부재중"(강한 경고색), false면 "하루 전 예정"(안내색)으로 표시합니다.</param>
+    /// <param name="headline">"오늘 부재 안내"/"오늘 부재 예정"/"내일 부재 예정"처럼 상황에
+    /// 맞는 제목을 호출자가 직접 정해서 넘깁니다(이 폼은 urgent만으로 둘 중 하나를 고르지
+    /// 않습니다 — "당일인데 아직 시작 전"처럼 세 번째 상태가 있을 수 있기 때문입니다).</param>
+    /// <param name="urgent">true면 강한 경고색(지금 실제로 부재중), false면 안내색(예정
+    /// 안내 — 오늘이든 내일이든)으로 표시합니다.</param>
     /// <remarks>text는 교장·교감이 같은 날 동시에 복무 기록이 있는 경우 줄바꿈으로 이어붙인
     /// 여러 줄일 수 있습니다. 그런 경우를 대비해 높이를 내용에 맞춰 늘립니다.</remarks>
-    public void UpdateContent(string text, bool urgent)
+    public void UpdateContent(string headline, string text, bool urgent)
     {
-        _headline = urgent ? "오늘 부재 안내" : "내일 부재 예정";
+        _headline = headline;
         _detail = text;
         _accentColor = urgent ? UiTheme.Danger : UiTheme.Sky;
         ResizeToFitContent();
