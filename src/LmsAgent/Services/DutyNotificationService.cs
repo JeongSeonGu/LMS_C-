@@ -83,9 +83,13 @@ public sealed class DutyNotificationService : IDisposable
                 if (nextMonth.Ok && nextMonth.Data is not null) records.AddRange(nextMonth.Data);
             }
 
+            // Position/DutyType을 .Trim()으로 비교한다 — 서버 값에 공백이 섞여 있으면
+            // (예: "교장 ") 정확히 일치하는 문자열만 찾는 Contains가 조용히 실패해 그
+            // 사람만 통째로 빠질 수 있다. 눈에 안 보이는 차이로 한 명이 누락되는 사고를
+            // 막기 위한 방어적 처리.
             bool Matches(DutyRecord r, DateTime day) =>
-                watchedPositions.Contains(r.Position)
-                && NotifiableDutyTypes.Contains(r.DutyType)
+                watchedPositions.Contains(r.Position.Trim())
+                && NotifiableDutyTypes.Contains(r.DutyType.Trim())
                 && r.DateValue == DateOnly.FromDateTime(day);
 
             // 오늘 날짜 기록을, 시간이 지정된 경우(하루 종일이 아닌 경우) 그 시간대와
