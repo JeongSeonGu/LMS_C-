@@ -49,7 +49,7 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
 
         Controls.Add(new Label
         {
-            Left = 20, Top = 128, Width = 300, Text = "WorkSupport 서버 주소 (선택)",
+            Left = 20, Top = 120, Width = 300, Text = "WorkSupport 서버 주소 (선택)",
         });
         Controls.Add(_apiBaseUrlBox);
 
@@ -63,9 +63,9 @@ public sealed class NetworkOptionsPage : UserControl, IOptionsPage
         UiTheme.StyleHintLabel(hint);
         Controls.Add(hint);
 
-        Controls.Add(new Label { Left = 20, Top = 243, Width = 300, Text = "교무업무 페이지" });
+        Controls.Add(new Label { Left = 20, Top = 243, Width = 130, Text = "교무업무 페이지" });
         Controls.Add(_workSupportPageUrlBox);
-        Controls.Add(new Label { Left = 20, Top = 278, Width = 300, Text = "전자칠판 페이지" });
+        Controls.Add(new Label { Left = 20, Top = 278, Width = 130, Text = "전자칠판 페이지" });
         Controls.Add(_smartBoardPageUrlBox);
 
         var pageHint = new Label
