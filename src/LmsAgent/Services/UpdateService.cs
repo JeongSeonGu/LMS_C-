@@ -305,46 +305,46 @@ public sealed class UpdateService
         var targetExePath = Path.Combine(installDir, exeName);
         var errorLogPath = Path.Combine(installDir, "update_error.log");
 
-        // ⚠ 실제로 겪은 또 다른 원인 — zip이 정상적으로(폴더를 한 겹 더 싸지 않고) 압축돼
-        // 있었는데도 같은 "파일을 찾을 수 없습니다" 오류가 났다. 고정된 2초만 기다리고
-        // xcopy를 실행하는데, 방금 종료 명령을 내린 현재 프로세스(자기 자신의 exe 파일)가
-        // 실제로 파일 핸들을 놓기까지 2초보다 더 걸리면(자체 포함 실행 파일이라 크고,
-        // 백신 검사 등으로 지연될 수 있다) xcopy가 그 파일 하나만 덮어쓰지 못한 채 지나갈
-        // 수 있다 — 그러면 재시작 시점에 exe가 없거나 손상된 상태일 수 있다. 고정 대기
-        // 대신 "같은 이름의 프로세스가 작업 목록에서 없어질 때까지" 최대 15초 정도 반복
-        // 확인하도록 바꾸고, 복사 뒤에는 실제로 exe가 그 자리에 있는지 확인해서 없으면
-        // 조용히 실패하는 대신 오류를 파일로 남긴다.
+        // ⚠ "chcp 65001 + UTF-8(BOM 없음)으로 저장"까지 했는데도 한글 사용자 폴더
+        // (예: C:\Users\교실\...)에서 또 "??"로 깨지는 경로를 못 찾는 사고가 재발했다.
+        // chcp는 "그 시점 이후 콘솔 입출력"의 코드 페이지만 바꿀 뿐이고, 일부 cmd.exe는
+        // 배치 파일을 통째로 먼저 읽어들인 뒤 실행하기 때문에 chcp가 적용되기 전에 이미
+        // 읽힌 뒷부분의 UTF-8 멀티바이트 한글이 그 시점의(기본 ANSI) 코드 페이지로
+        // 잘못 해석될 수 있다 — 결국 "파일 내용으로 저장된 한글 경로"는 인코딩에 어떻게든
+        // 기대는 한 근본적으로 불안정하다.
+        //
+        // 그래서 아예 한글이 든 경로를 배치 파일 "내용"에 전혀 쓰지 않는 방식으로 바꿨다.
+        // Process.Start에 인자로 넘기면(ArgumentList) OS가 유니코드 그대로 새 프로세스의
+        // 명령줄로 전달하고, 배치 파일은 그 값을 %1~%4로 받기만 한다 — 텍스트 파일로
+        // 다시 읽고 어떤 코드 페이지로 해석할지 정할 필요 자체가 없어서, 사용자 폴더
+        // 이름이 한글이든 그 외 어떤 언어든 깨질 방법이 없다. 배치 파일 내용 자체는
+        // 전부 ASCII라 인코딩/코드 페이지가 더 이상 문제되지 않는다.
         var script = new StringBuilder();
         script.AppendLine("@echo off");
-        // ⚠ 진짜 원인이었던 버그 — 이 파일을 Encoding.ASCII로 저장했었는데, Windows
-        // 사용자 계정 이름이 한글이면(예: "C:\Users\홍길동\...") ASCII로 표현할 수 없는
-        // 글자가 전부 '?'로 뭉개져 버린다. 그러면 아래 xcopy/start 명령에 박힌 경로
-        // 자체가 실제로 "C:\Users\??\..." 처럼 깨진 채로 이 파일에 저장되고, cmd.exe는
-        // 그 깨진 경로를 그대로 찾다가 "파일을 찾을 수 없습니다" 오류를 낸다(사용자가
-        // 실제로 겪은 오류 메시지에 그대로 "??"가 찍혀 있었다 — 사용자가 지운 게 아니라
-        // 인코딩 손상이었다). UTF-8(BOM 없이)로 저장하고, cmd.exe가 그 UTF-8을 제대로
-        // 읽도록 맨 앞에서 코드 페이지를 65001(UTF-8)로 바꾼다.
-        script.AppendLine("chcp 65001 > nul");
         script.AppendLine("setlocal enabledelayedexpansion");
+        script.AppendLine("set \"EXE_NAME=%~1\"");
+        script.AppendLine("set \"COPY_SOURCE=%~2\"");
+        script.AppendLine("set \"INSTALL_DIR=%~3\"");
+        script.AppendLine("set \"ERROR_LOG=%~4\"");
         script.AppendLine("set WAITED=0");
         script.AppendLine(":waitloop");
-        script.AppendLine($"tasklist /FI \"IMAGENAME eq {exeName}\" 2>NUL | find /I \"{exeName}\" >NUL");
+        script.AppendLine("tasklist /FI \"IMAGENAME eq !EXE_NAME!\" 2>NUL | find /I \"!EXE_NAME!\" >NUL");
         script.AppendLine("if errorlevel 1 goto copyfiles");
         script.AppendLine("if !WAITED! GEQ 15 goto copyfiles");
         script.AppendLine("timeout /t 1 /nobreak > NUL");
         script.AppendLine("set /a WAITED=WAITED+1");
         script.AppendLine("goto waitloop");
         script.AppendLine(":copyfiles");
-        script.AppendLine($"xcopy /E /Y /I \"{copySource}\" \"{installDir}\"");
-        script.AppendLine($"if not exist \"{targetExePath}\" (");
-        script.AppendLine($"  echo [%date% %time%] 업데이트 파일 복사 후에도 실행 파일을 찾을 수 없습니다: {targetExePath} >> \"{errorLogPath}\"");
+        script.AppendLine("xcopy /E /Y /I \"!COPY_SOURCE!\" \"!INSTALL_DIR!\"");
+        script.AppendLine("if not exist \"!INSTALL_DIR!\\!EXE_NAME!\" (");
+        script.AppendLine("  echo [%date% %time%] update file missing after copy: !INSTALL_DIR!\\!EXE_NAME! >> \"!ERROR_LOG!\"");
         script.AppendLine("  exit /b 1");
         script.AppendLine(")");
-        script.AppendLine($"start \"\" \"{targetExePath}\"");
+        script.AppendLine("start \"\" \"!INSTALL_DIR!\\!EXE_NAME!\"");
         script.AppendLine("del \"%~f0\"");
 
-        // BOM을 붙이면 첫 줄(@echo off)이 깨져 보이는 cmd.exe 버전이 있어 BOM 없는
-        // UTF-8로 저장한다 — 위 "chcp 65001"과 짝을 맞춰야 한글 경로가 안전하다.
+        // 스크립트 내용 자체는 이제 순수 ASCII이므로 인코딩은 더 이상 중요하지 않지만,
+        // 관례상 UTF-8(BOM 없음)을 유지한다.
         File.WriteAllText(scriptPath, script.ToString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         var startInfo = new ProcessStartInfo
@@ -355,6 +355,13 @@ public sealed class UpdateService
             WindowStyle = ProcessWindowStyle.Hidden,
             CreateNoWindow = true,
         };
+        // 한글 등 비ASCII 경로는 여기(ArgumentList)로만 전달한다 — OS가 유니코드 그대로
+        // 새 프로세스의 명령줄에 실어 보내므로, 배치 "파일"의 인코딩/코드 페이지와
+        // 전혀 무관하게 항상 정확한 문자열로 전달된다.
+        startInfo.ArgumentList.Add(exeName);
+        startInfo.ArgumentList.Add(copySource);
+        startInfo.ArgumentList.Add(installDir);
+        startInfo.ArgumentList.Add(errorLogPath);
 
         Process.Start(startInfo);
         Environment.Exit(0);
